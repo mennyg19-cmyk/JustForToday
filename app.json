@@ -1,0 +1,77 @@
+{
+  "expo": {
+    "name": "LifeTrack Pro",
+    "slug": "lifetrack-pro-clean",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "lifetrackpro",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mennyg19.lifetrackpro",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "LifeTrack Pro needs access to your step count data to track your daily activity.",
+        "NSHealthUpdateUsageDescription": "LifeTrack Pro needs permission to update your health data.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUbiquitousContainers": {
+          "iCloud.com.mennyg19.lifetrackpro": {}
+        }
+      },
+      "usesIcloudStorage": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "@oleg_svetlichnyi/expo-icloud-storage",
+        {
+          "icloudContainerIdentifier": "iCloud.com.mennyg19.lifetrackpro"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "86c6804e-82ed-489e-bd9a-cbc01330fa56"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d8c092ec-edbb-41c4-aefd-fb97ded85750"
+    }
+  }
+}
