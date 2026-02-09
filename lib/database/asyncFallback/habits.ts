@@ -4,7 +4,9 @@ import { formatDateKey, getTodayKey, getWeekStart, getWeekEnd, getMonthStart, ge
 
 const HABITS_KEY = 'lifetrack_habits';
 
-type StoredHabit = Pick<Habit, 'id' | 'name' | 'frequency' | 'type' | 'history' | 'createdAt'>;
+type StoredHabit = Pick<Habit, 'id' | 'name' | 'frequency' | 'type' | 'history' | 'createdAt'> & {
+  trackingStartDate?: string;
+};
 
 function calculateStreak(history: Record<string, boolean>): number {
   let streak = 0;
@@ -72,6 +74,7 @@ function toHabit(row: StoredHabit, orderIndex: number): Habit {
   const streak = calculateStreak(history);
   const highScore = calculateLongestStreak(history);
 
+  const createdDateKey = formatDateKey(new Date(row.createdAt));
   return {
     ...row,
     completedToday: history[todayKey] || false,
@@ -82,6 +85,7 @@ function toHabit(row: StoredHabit, orderIndex: number): Habit {
     thisMonthCount: calculateCounts(history, monthStart, monthEnd),
     lastMonthCount: calculateCounts(history, lastMonthStart, lastMonthEnd),
     history,
+    trackingStartDate: row.trackingStartDate ?? createdDateKey,
   };
 }
 
@@ -142,4 +146,17 @@ export async function deleteHabitAsync(habitId: string): Promise<void> {
 export async function updateHabitOrderAsync(order: string[]): Promise<void> {
   // Order is persisted in settings (getHabitsOrder/saveHabitsOrder). Nothing to store here.
   // Habits are re-ordered when we getHabits(order).
+}
+
+export async function updateHabitAsync(
+  habitId: string,
+  updates: { name?: string; trackingStartDate?: string }
+): Promise<Habit> {
+  const stored = await getStoredHabits();
+  const habit = stored.find((h) => h.id === habitId);
+  if (!habit) throw new Error('Habit not found');
+  if (updates.name != null) habit.name = updates.name.trim();
+  if (updates.trackingStartDate !== undefined) habit.trackingStartDate = updates.trackingStartDate || undefined;
+  await saveStoredHabits(stored);
+  return toHabit(habit, 0);
 }

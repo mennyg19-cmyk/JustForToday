@@ -15,8 +15,17 @@ import { useSobriety } from './hooks/useSobriety';
 import { AddCounterModal } from './components/AddCounterModal';
 import { CounterDetailModal } from './components/CounterDetailModal';
 import { SobrietyCard } from './components/SobrietyCard';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export function SobrietyScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string }>();
+  const customBack =
+    params.from === 'analytics'
+      ? () => router.replace('/analytics')
+      : params.from === 'checkin'
+        ? () => router.replace('/check-in')
+        : undefined;
   const {
     counters,
     loading,
@@ -82,7 +91,7 @@ export function SobrietyScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <AppHeader title="Sobriety" rightSlot={<ThemeToggle />} />
+      <AppHeader title="Sobriety" rightSlot={<ThemeToggle />} onBackPress={customBack} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 128 }}>
         <View className="p-6 gap-3">
@@ -159,8 +168,8 @@ export function SobrietyScreen() {
                       </View>
                     </View>
                     <View className="flex-row items-center justify-between bg-muted rounded-lg px-2 py-1.5">
-                      <Text className="text-lg font-bold text-foreground">
-                        {timeSince.days} days
+                      <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
+                        {timeSince.formattedTimer}
                       </Text>
                       {isLongest ? (
                         <Text className="text-xs text-primary font-semibold">

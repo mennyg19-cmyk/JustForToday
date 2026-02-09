@@ -36,6 +36,7 @@ function rowToCounter(
     longest_streak: number;
     notes: string | null;
     order_index: number;
+    last_daily_renewal: string | null;
   },
   history: Record<string, boolean>
 ): SobrietyCounter {
@@ -48,6 +49,7 @@ function rowToCounter(
     longestStreak: row.longest_streak,
     notes: row.notes ?? undefined,
     allHistory: history,
+    lastDailyRenewal: row.last_daily_renewal ?? undefined,
   };
 }
 
@@ -72,6 +74,7 @@ export async function getSobrietyCounters(): Promise<SobrietyCounter[]> {
     longest_streak: number;
     notes: string | null;
     order_index: number;
+    last_daily_renewal: string | null;
   }>('SELECT * FROM sobriety_counters ORDER BY order_index ASC');
 
   const historyRows = await db.getAllAsync<{
@@ -94,19 +97,21 @@ export async function getSobrietyCounters(): Promise<SobrietyCounter[]> {
 export async function createSobrietyCounter(
   displayName: string,
   actualName?: string,
-  notes?: string
+  notes?: string,
+  startDateISO?: string
 ): Promise<SobrietyCounter> {
   if (!(await isSQLiteAvailable())) {
     return asyncSobriety.createSobrietyCounterAsync(
       displayName,
       actualName,
-      notes
+      notes,
+      startDateISO
     );
   }
 
   const db = await getDatabase();
   const id = Date.now().toString();
-  const now = new Date().toISOString();
+  const startISO = startDateISO ?? new Date().toISOString();
   const maxOrder = await db.getFirstAsync<{ max_order: number }>(
     'SELECT MAX(order_index) as max_order FROM sobriety_counters'
   );
@@ -115,7 +120,7 @@ export async function createSobrietyCounter(
   await db.runAsync(
     `INSERT INTO sobriety_counters (id, display_name, actual_name, start_date, current_streak_start, longest_streak, notes, order_index)
      VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-    [id, displayName, actualName ?? null, now, now, notes ?? null, orderIndex]
+    [id, displayName, actualName ?? null, startISO, startISO, notes ?? null, orderIndex]
   );
   triggerSync();
 
@@ -238,4 +243,24 @@ export async function saveSobrietyCountersOrder(order: string[]): Promise<void> 
     });
     triggerSync();
   }
+}
+
+/** Set last 24h commitment renewal timestamp for Daily Renewal. */
+export async function setLastDailyRenewal(
+  counterId: string,
+  isoTimestamp: string
+): Promise<SobrietyCounter> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSobriety.setLastDailyRenewalAsync(counterId, isoTimestamp);
+  }
+  const db = await getDatabase();
+  await db.runAsync(
+    'UPDATE sobriety_counters SET last_daily_renewal = ? WHERE id = ?',
+    [isoTimestamp, counterId]
+  );
+  triggerSync();
+  const list = await getSobrietyCounters();
+  const out = list.find((c) => c.id === counterId);
+  if (!out) throw new Error('Counter not found');
+  return out;
 }

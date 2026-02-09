@@ -4,6 +4,7 @@ const DB_NAME = 'lifetrack.db';
 
 let dbInstance: import('expo-sqlite').SQLiteDatabase | null = null;
 let sqliteAvailable: boolean | null = null;
+let migrationsVerified = false;
 
 /**
  * Check if the native Expo SQLite module is available.
@@ -26,7 +27,8 @@ export async function isSQLiteAvailable(): Promise<boolean> {
 
 /**
  * Get or create the database instance.
- * Runs migrations automatically on first access.
+ * Runs migrations automatically on first access, and re-checks if a
+ * previous migration attempt failed (so we don't cache broken state).
  * Throws if SQLite is not available (e.g. in Expo Go).
  */
 export async function getDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
@@ -35,13 +37,17 @@ export async function getDatabase(): Promise<import('expo-sqlite').SQLiteDatabas
     throw new Error('EXPO_GO_NO_SQLITE');
   }
 
-  if (dbInstance) {
-    return dbInstance;
+  if (!dbInstance) {
+    const SQLite = await import('expo-sqlite');
+    dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
   }
 
-  const SQLite = await import('expo-sqlite');
-  dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
-  await runMigrations(dbInstance);
+  // Always run migrations if they haven't been verified in this JS session.
+  // runMigrations is idempotent — it skips already-applied versions.
+  if (!migrationsVerified) {
+    await runMigrations(dbInstance);
+    migrationsVerified = true;
+  }
 
   return dbInstance;
 }
@@ -54,6 +60,7 @@ export async function closeDatabase(): Promise<void> {
   if (dbInstance) {
     await dbInstance.closeAsync();
     dbInstance = null;
+    migrationsVerified = false;
   }
 }
 

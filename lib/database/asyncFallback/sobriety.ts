@@ -32,6 +32,7 @@ export async function getSobrietyCountersAsync(): Promise<SobrietyCounter[]> {
     ...c,
     currentStreakStart: c.currentStreakStart ?? c.startDate,
     allHistory: c.allHistory ?? c.history ?? {},
+    lastDailyRenewal: c.lastDailyRenewal ?? undefined,
   }));
   return migrated;
 }
@@ -45,16 +46,17 @@ export async function saveSobrietyCountersAsync(
 export async function createSobrietyCounterAsync(
   displayName: string,
   actualName?: string,
-  notes?: string
+  notes?: string,
+  startDateISO?: string
 ): Promise<SobrietyCounter> {
   const counters = await getSobrietyCountersAsync();
-  const now = new Date().toISOString();
+  const startISO = startDateISO ?? new Date().toISOString();
   const newCounter: SobrietyCounter = {
     id: Date.now().toString(),
     displayName,
     actualName,
-    startDate: now,
-    currentStreakStart: now,
+    startDate: startISO,
+    currentStreakStart: startISO,
     allHistory: {},
     longestStreak: 0,
     notes,
@@ -98,4 +100,16 @@ export async function deleteSobrietyCounterAsync(counterId: string): Promise<voi
   const counters = await getSobrietyCountersAsync();
   const filtered = counters.filter((c) => c.id !== counterId);
   await saveSobrietyCountersAsync(filtered);
+}
+
+export async function setLastDailyRenewalAsync(
+  counterId: string,
+  isoTimestamp: string
+): Promise<SobrietyCounter> {
+  const counters = await getSobrietyCountersAsync();
+  const counter = counters.find((c) => c.id === counterId);
+  if (!counter) throw new Error('Counter not found');
+  counter.lastDailyRenewal = isoTimestamp;
+  await saveSobrietyCountersAsync(counters);
+  return counter;
 }

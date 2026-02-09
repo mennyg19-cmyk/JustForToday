@@ -17,6 +17,7 @@ import {
   ModalInput,
   ModalSection,
   ModalButton,
+  ModalButtonRow,
   ModalTitle,
 } from '@/components/ModalContent';
 import { ModalSurface } from '@/components/ModalSurface';
@@ -24,6 +25,7 @@ import { useIconColors } from '@/lib/iconTheme';
 import { useGratitude } from './hooks/useGratitude';
 import { checkSimilarGratitude } from './similarity';
 import type { GratitudeEntry } from '@/lib/database/schema';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 function isToday(isoDate: string): boolean {
   const d = new Date(isoDate);
@@ -83,6 +85,9 @@ function formatGratitudeDate(isoDate: string): string {
 }
 
 export function GratitudeScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string }>();
+  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
   const iconColors = useIconColors();
   const { entries, loading, error, refresh, addEntry, updateEntry, removeEntry } = useGratitude();
   const [draft, setDraft] = useState('');
@@ -184,7 +189,7 @@ export function GratitudeScreen() {
   if (error) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <AppHeader title="Gratitude" rightSlot={<ThemeToggle />} />
+        <AppHeader title="Gratitude" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
           <Text className="text-muted-foreground text-center">{error}</Text>
@@ -195,7 +200,7 @@ export function GratitudeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <AppHeader title="Gratitude" rightSlot={<ThemeToggle />} />
+      <AppHeader title="Gratitude" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView
         className="flex-1"
@@ -293,27 +298,28 @@ export function GratitudeScreen() {
       <ModalSurface
         visible={duplicateModal !== null}
         onRequestClose={() => setDuplicateModal(null)}
-        contentClassName="p-6"
+        contentClassName="p-6 max-h-[85%]"
+        keyboardAvoid={false}
       >
         {duplicateModal && (
-          <>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 16 }}
+          >
             <ModalTitle className="mb-2">Similar entry</ModalTitle>
-            <Text className="text-foreground mb-2">
+            <Text className="text-modal-content-foreground mb-2">
               You entered this gratitude on {duplicateModal.dateStr}. Is this different?
             </Text>
             {duplicateModal.entryToEdit && (
-              <View className="rounded-lg bg-muted/50 dark:bg-muted/30 border border-border p-3 mb-4">
+              <View className="rounded-lg bg-muted/50 border border-modal-border p-3 mb-4">
                 <Text className="text-xs text-muted-foreground mb-1">Previous entry</Text>
-                <Text className="text-sm text-foreground">{duplicateModal.entryToEdit.text}</Text>
+                <Text className="text-sm text-modal-content-foreground" numberOfLines={10}>
+                  {duplicateModal.entryToEdit.text}
+                </Text>
               </View>
             )}
-            <View className="gap-3">
-              <ModalButton
-                variant="secondary"
-                onPress={() => setDuplicateModal(null)}
-              >
-                Edit what I wrote
-              </ModalButton>
+            <ModalButtonRow className="flex-col gap-2">
               <ModalButton
                 variant="primary"
                 onPress={() => {
@@ -336,8 +342,11 @@ export function GratitudeScreen() {
                   Edit previous entry
                 </ModalButton>
               )}
-            </View>
-          </>
+              <ModalButton variant="secondary" onPress={() => setDuplicateModal(null)}>
+                Edit what I wrote
+              </ModalButton>
+            </ModalButtonRow>
+          </ScrollView>
         )}
       </ModalSurface>
     </SafeAreaView>

@@ -60,14 +60,15 @@ export async function getInventoryEntriesByType(
 }
 
 export async function createInventoryEntry(
-  entry: Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>
+  entry: Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>,
+  options?: { createdAt?: string }
 ): Promise<InventoryEntry> {
   if (!(await isSQLiteAvailable())) {
-    return asyncInv.createInventoryEntryAsync(entry);
+    return asyncInv.createInventoryEntryAsync(entry, options);
   }
   const db = await getDatabase();
   const id = Date.now().toString();
-  const now = new Date().toISOString();
+  const now = options?.createdAt ?? new Date().toISOString();
   await db.runAsync(
     `INSERT INTO inventory_entries (
       id, type, who, what_happened, affects_json, defects_json, assets_json,

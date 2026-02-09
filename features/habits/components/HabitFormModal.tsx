@@ -98,7 +98,7 @@ export function HabitFormModal({ visible, onClose, onSubmit }: HabitFormModalPro
             <Switch
               value={type === 'break'}
               onValueChange={(val) => setType(val ? 'break' : 'build')}
-              trackColor={{ false: '#8B5CF6', true: '#ef4444' }}
+              trackColor={{ false: '#B48C3C', true: '#C83232' }}
               thumbColor="#ffffff"
             />
           </View>

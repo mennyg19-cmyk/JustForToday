@@ -1,5 +1,13 @@
 import React from 'react';
-import { Modal, View, Pressable, StyleSheet } from 'react-native';
+import {
+  Modal,
+  View,
+  Pressable,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+} from 'react-native';
 import { useThemeStyle } from '@/lib/ThemeContext';
 
 const overlayOpacity = 0.6;
@@ -13,6 +21,8 @@ interface ModalSurfaceProps {
   animationType?: 'fade' | 'slide' | 'none';
   /** Optional extra className for the content container (e.g. max-w-md, rounded-t-3xl) */
   contentClassName?: string;
+  /** When true, wrap content in KeyboardAvoidingView so submit buttons stay visible when keyboard is open */
+  keyboardAvoid?: boolean;
 }
 
 /**
@@ -27,6 +37,7 @@ export function ModalSurface({
   position = 'center',
   animationType = 'fade',
   contentClassName = '',
+  keyboardAvoid = true,
 }: ModalSurfaceProps) {
   const { themeStyle } = useThemeStyle();
 
@@ -34,6 +45,20 @@ export function ModalSurface({
     position === 'bottom'
       ? [styles.contentBase, styles.contentBottom, { maxHeight: '80%' }]
       : [styles.contentBase, styles.contentCenter];
+
+  const handleOverlayPress = () => {
+    Keyboard.dismiss();
+    onRequestClose();
+  };
+
+  const content = (
+    <View
+      style={themeStyle as any}
+      className={`bg-modal-content border-2 border-modal-border rounded-2xl overflow-hidden ${contentClassName}`.trim()}
+    >
+      {children}
+    </View>
+  );
 
   return (
     <Modal
@@ -43,11 +68,7 @@ export function ModalSurface({
       onRequestClose={onRequestClose}
     >
       <View style={[styles.overlay, position === 'bottom' && styles.overlayBottom]}>
-        {/* Backdrop: only this area closes on tap. Content is rendered on top so it gets touches first. */}
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onRequestClose}
-        />
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleOverlayPress} />
         <View
           style={[
             contentWrapperStyle,
@@ -55,12 +76,17 @@ export function ModalSurface({
           ]}
           pointerEvents="box-none"
         >
-          <View
-            style={themeStyle as any}
-            className={`flex-1 bg-modal-content border-2 border-modal-border rounded-2xl overflow-hidden ${contentClassName}`.trim()}
-          >
-            {children}
-          </View>
+          {keyboardAvoid ? (
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoid}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+            >
+              {content}
+            </KeyboardAvoidingView>
+          ) : (
+            content
+          )}
         </View>
       </View>
     </Modal>
@@ -101,5 +127,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
+  },
+  keyboardAvoid: {
+    width: '100%',
+    maxWidth: 480,
   },
 });

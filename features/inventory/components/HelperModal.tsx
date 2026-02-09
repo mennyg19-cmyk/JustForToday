@@ -65,7 +65,7 @@ export function HelperModal({
                 <View className="flex-row items-center justify-between gap-3">
                   <View className="flex-1">
                     <Text
-                      className={`font-semibold ${selected ? (isDefects ? 'text-destructive' : 'text-primary') : 'text-foreground'}`}
+                      className={`font-semibold ${selected ? (isDefects ? 'text-destructive' : 'text-primary') : 'text-modal-content-foreground'}`}
                     >
                       {item.label}
                     </Text>

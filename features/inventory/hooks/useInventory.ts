@@ -31,8 +31,11 @@ export function useInventory() {
   }, [refresh]);
 
   const addEntry = useCallback(
-    async (entry: Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const created = await createInventoryEntry(entry);
+    async (
+      entry: Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>,
+      options?: { createdAt?: string }
+    ) => {
+      const created = await createInventoryEntry(entry, options);
       setEntries((prev) => [created, ...prev]);
       return created;
     },

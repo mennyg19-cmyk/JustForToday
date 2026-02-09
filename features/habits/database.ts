@@ -96,6 +96,7 @@ export async function getHabits(): Promise<Habit[]> {
     type: string;
     created_at: string;
     order_index: number;
+    tracking_start_date: string | null;
   }>('SELECT * FROM habits ORDER BY order_index ASC, created_at ASC');
 
   // Get all habit history
@@ -135,6 +136,7 @@ export async function getHabits(): Promise<Habit[]> {
     const streak = calculateStreak(history);
     const highScore = calculateLongestStreak(history);
 
+    const createdDateKey = formatDateKey(new Date(row.created_at));
     return {
       id: row.id,
       name: row.name,
@@ -149,6 +151,7 @@ export async function getHabits(): Promise<Habit[]> {
       lastMonthCount: calculateCounts(history, lastMonthStart, lastMonthEnd),
       history,
       createdAt: row.created_at,
+      trackingStartDate: row.tracking_start_date ?? createdDateKey,
     };
   });
 
@@ -190,6 +193,35 @@ export async function createHabit(
   if (!habit) {
     throw new Error('Failed to create habit');
   }
+  return habit;
+}
+
+export interface UpdateHabitInput {
+  name?: string;
+  trackingStartDate?: string; // YYYY-MM-DD
+}
+
+/**
+ * Update habit name and/or tracking start date
+ */
+export async function updateHabit(habitId: string, updates: UpdateHabitInput): Promise<Habit> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncHabits.updateHabitAsync(habitId, updates);
+  }
+  const db = await getDatabase();
+  if (updates.name != null) {
+    await db.runAsync('UPDATE habits SET name = ? WHERE id = ?', [updates.name.trim(), habitId]);
+  }
+  if (updates.trackingStartDate !== undefined) {
+    await db.runAsync('UPDATE habits SET tracking_start_date = ? WHERE id = ?', [
+      updates.trackingStartDate || null,
+      habitId,
+    ]);
+  }
+  triggerSync();
+  const habits = await getHabits();
+  const habit = habits.find((h) => h.id === habitId);
+  if (!habit) throw new Error('Habit not found');
   return habit;
 }
 

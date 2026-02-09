@@ -80,6 +80,20 @@ export function useHabits() {
     }
   }, []);
 
+  const updateHabit = useCallback(
+    async (habitId: string, updates: { name?: string; trackingStartDate?: string }) => {
+      try {
+        const updated = await habitsDb.updateHabit(habitId, updates);
+        setHabits((prev) => prev.map((h) => (h.id === habitId ? updated : h)));
+        return updated;
+      } catch (err) {
+        console.error('Failed to update habit:', err);
+        throw err;
+      }
+    },
+    []
+  );
+
   const reorderHabits = useCallback(
     async (newOrder: string[]) => {
       try {
@@ -117,6 +131,7 @@ export function useHabits() {
     toggleHabit,
     addHabit,
     deleteHabit,
+    updateHabit,
     reorderHabits,
     refetch: loadHabits,
     completedCount,

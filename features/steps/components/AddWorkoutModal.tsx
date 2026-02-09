@@ -11,6 +11,8 @@ import {
 
 interface AddWorkoutModalProps {
   visible: boolean;
+  /** When adding for a past day */
+  dateLabel?: string;
   onClose: () => void;
   onSave: (activityName: string, durationMinutes: number, caloriesBurned: number) => Promise<void>;
 }
@@ -28,6 +30,7 @@ const ACTIVITY_OPTIONS = [
 
 export function AddWorkoutModal({
   visible,
+  dateLabel,
   onClose,
   onSave,
 }: AddWorkoutModalProps) {
@@ -62,9 +65,11 @@ export function AddWorkoutModal({
     !Number.isNaN(caloriesNum) &&
     caloriesNum >= 0;
 
+  const title = dateLabel ? `Log workout for ${dateLabel}` : 'Log workout';
+
   return (
     <ModalSurface visible={visible} onRequestClose={onClose} contentClassName="p-6">
-      <ModalTitle className="mb-4">Log workout</ModalTitle>
+      <ModalTitle className="mb-4">{title}</ModalTitle>
 
       <ModalLabel>Activity</ModalLabel>
       <View className="flex-row flex-wrap gap-2 mb-4">

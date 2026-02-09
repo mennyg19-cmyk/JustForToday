@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Timer, Pencil, Trash2 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { ModalButton } from '@/components/ModalContent';
+import { ModalButton, ModalButtonRow } from '@/components/ModalContent';
 import { useIconColors } from '@/lib/iconTheme';
 import { useFasting } from './hooks/useFasting';
 import {
@@ -33,6 +33,7 @@ import type { FastingSession } from '@/lib/database/schema';
 import { ModalSurface } from '@/components/ModalSurface';
 import { AddPastSessionModal } from './components/AddPastSessionModal';
 import { EditSessionModal } from './components/EditSessionModal';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 /** Card container: consistent with other screens (gratitude, inventory). */
 function Card({
@@ -50,6 +51,9 @@ function Card({
 }
 
 export function FastingScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string }>();
+  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
   const iconColors = useIconColors();
   const {
     sessions,
@@ -163,7 +167,7 @@ export function FastingScreen() {
   if (error) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <AppHeader title="Fasting" rightSlot={<ThemeToggle />} />
+        <AppHeader title="Fasting" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
           <Text className="text-muted-foreground text-center">{error}</Text>
@@ -174,7 +178,7 @@ export function FastingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <AppHeader title="Fasting" rightSlot={<ThemeToggle />} />
+      <AppHeader title="Fasting" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView
         className="flex-1"
@@ -316,21 +320,20 @@ export function FastingScreen() {
       >
         {sessionToDelete && (
           <>
-            <Text className="text-lg font-bold text-foreground mb-2">Delete session</Text>
-            <Text className="text-foreground mb-4">
+            <Text className="text-xl font-bold text-modal-content-foreground mb-2">
+              Delete session
+            </Text>
+            <Text className="text-modal-content-foreground mb-4">
               Remove this fasting session? This cannot be undone.
             </Text>
-            <View className="gap-3">
+            <ModalButtonRow>
               <ModalButton variant="secondary" onPress={() => setSessionToDelete(null)}>
                 Cancel
               </ModalButton>
-              <ModalButton
-                variant="destructive"
-                onPress={handleConfirmDelete}
-              >
+              <ModalButton variant="destructive" onPress={handleConfirmDelete}>
                 Delete
               </ModalButton>
-            </View>
+            </ModalButtonRow>
           </>
         )}
       </ModalSurface>

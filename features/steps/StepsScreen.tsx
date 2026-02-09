@@ -6,48 +6,41 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Footprints, Pencil, CheckCircle, Flame, Dumbbell, Trash2 } from 'lucide-react-native';
+import { Footprints, Pencil, CheckCircle, Flame } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { ModalButton, ModalButtonRow } from '@/components/ModalContent';
-import { ModalSurface } from '@/components/ModalSurface';
+import { MetricCard } from '@/components/MetricCard';
 import { useIconColors } from '@/lib/iconTheme';
-import { formatDateShort } from '@/utils/date';
+import { formatDateShort, formatDateWithWeekday } from '@/utils/date';
 import { useSteps, type RecentStepsDay } from './hooks/useSteps';
 import { EditStepsModal } from './components/EditStepsModal';
-import { AddWorkoutModal } from './components/AddWorkoutModal';
-import type { Workout } from '@/lib/database/schema';
+import { HeatmapGrid } from '@/components/HeatmapGrid';
+import { Link, useRouter, useLocalSearchParams } from 'expo-router';
 
 const cardClass = 'rounded-2xl p-4 bg-card border border-border';
 
 export function StepsScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string }>();
   const iconColors = useIconColors();
+  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
   const {
     stepsToday,
     stepsGoal,
-    recentDays,
-    workoutsToday,
+    recentDaysWithWorkoutsAndCalories,
+    heatmapStepsData,
     activeCaloriesToday,
     activeCaloriesSource,
     loading,
     error,
-    syncing,
     refresh,
     setManualSteps,
-    addManualWorkout,
-    removeWorkout,
-    syncFromHealthKit,
   } = useSteps();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editDay, setEditDay] = useState<RecentStepsDay | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [showNotAvailable, setShowNotAvailable] = useState(false);
-  const [showAddWorkout, setShowAddWorkout] = useState(false);
-  const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
 
   const handleSaveSteps = useCallback(
     async (steps: number, dateKey?: string) => {
@@ -67,34 +60,6 @@ export function StepsScreen() {
     setEditDay(day);
     setShowEditModal(true);
   }, []);
-
-  const handleSyncHealthKit = useCallback(() => {
-    if (Platform.OS !== 'ios') {
-      setShowNotAvailable(true);
-      return;
-    }
-    setSyncError(null);
-    syncFromHealthKit(
-      (msg) => setSyncError(msg),
-      (msg) => setSyncError(msg)
-    );
-  }, [syncFromHealthKit]);
-
-  const handleAddWorkout = useCallback(
-    async (activityName: string, durationMinutes: number, caloriesBurned: number) => {
-      await addManualWorkout(activityName, durationMinutes, caloriesBurned);
-      setShowAddWorkout(false);
-    },
-    [addManualWorkout]
-  );
-
-  const handleDeleteWorkout = useCallback(
-    async (w: Workout) => {
-      await removeWorkout(w.id);
-      setWorkoutToDelete(null);
-    },
-    [removeWorkout]
-  );
 
   if (loading) {
     return (
@@ -120,7 +85,7 @@ export function StepsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <AppHeader title="Steps" rightSlot={<ThemeToggle />} />
+      <AppHeader title="Steps" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView
         className="flex-1"
@@ -133,166 +98,127 @@ export function StepsScreen() {
           />
         }
       >
-        {/* Today's steps – hero */}
-        <View className={`${cardClass} mb-4`}>
-          <View className="flex-row items-center gap-2 mb-2">
-            <Footprints size={20} color={iconColors.primary} />
-            <Text className="text-base font-semibold text-foreground">Today</Text>
-          </View>
-          <Text className="text-4xl font-bold text-foreground">
-            {stepsToday.toLocaleString()}
-          </Text>
-          <Text className="text-sm text-muted-foreground mt-1">steps</Text>
-          {stepsGoal > 0 && (
-            <View className="mt-4">
-              <View className="flex-row justify-between mb-1">
-                <Text className="text-xs text-muted-foreground">
-                  Goal: {stepsGoal.toLocaleString()}
-                </Text>
-                <Text className="text-xs text-muted-foreground">
-                  {Math.round(progressPct)}%
-                </Text>
-              </View>
+        {/* Row 1: Calories – full width */}
+        <View className="mb-4">
+          <MetricCard
+            icon={Flame}
+            iconColor={iconColors.primary}
+            title="Active calories"
+            value={activeCaloriesToday.toLocaleString()}
+            subtitle={
+              activeCaloriesSource === 'healthkit'
+                ? 'From Health app'
+                : activeCaloriesSource === 'estimated'
+                  ? 'Estimated from steps (~0.04 kcal/step)'
+                  : 'Log steps or sync from Health'
+            }
+          />
+        </View>
+
+        {/* Steps card */}
+        <View className="mb-4">
+          <MetricCard
+            icon={Footprints}
+            iconColor={iconColors.primary}
+            title="Steps"
+            value={stepsToday.toLocaleString()}
+            subtitle={
+              stepsGoal > 0
+                ? `Goal: ${stepsGoal.toLocaleString()} · ${Math.round(progressPct)}%`
+                : 'Set goal in Settings'
+            }
+            actionLabel="Edit"
+            onAction={openEditToday}
+          >
+            {stepsGoal > 0 ? (
               <View className="h-2 rounded-full bg-muted overflow-hidden">
                 <View
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${progressPct}%` }}
                 />
               </View>
-            </View>
-          )}
+            ) : null}
+          </MetricCard>
         </View>
 
-        {/* Active calories */}
-        <View className={`${cardClass} mb-4`}>
-          <View className="flex-row items-center gap-2 mb-2">
-            <Flame size={20} color={iconColors.primary} />
-            <Text className="text-base font-semibold text-foreground">Active calories</Text>
-          </View>
-          <Text className="text-3xl font-bold text-foreground">
-            {activeCaloriesToday.toLocaleString()}
-          </Text>
-          <Text className="text-sm text-muted-foreground mt-1">
-            {activeCaloriesSource === 'healthkit'
-              ? 'From Health app'
-              : activeCaloriesSource === 'estimated'
-                ? 'Estimated from steps (~0.04 kcal/step)'
-                : 'Log steps or sync from Health'}
-          </Text>
-        </View>
-
-        {/* Actions */}
-        <View className={`${cardClass} mb-4`}>
-          <Text className="text-base font-semibold text-foreground mb-3">
-            Update steps
-          </Text>
-          <View className="gap-3">
-            <ModalButton variant="primary" onPress={openEditToday}>
-              Enter manually
-            </ModalButton>
-            {Platform.OS === 'ios' ? (
-              <ModalButton
-                variant="secondary"
-                onPress={handleSyncHealthKit}
-                disabled={syncing}
-                loading={syncing}
-              >
-                Sync from Health
-              </ModalButton>
-            ) : (
-              <ModalButton variant="secondary" onPress={handleSyncHealthKit}>
-                Sync from Health
-              </ModalButton>
-            )}
-          </View>
-        </View>
-
-        {/* Workouts today */}
-        <View className={`${cardClass} mb-4`}>
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center gap-2">
-              <Dumbbell size={20} color={iconColors.primary} />
-              <Text className="text-base font-semibold text-foreground">Workouts today</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => setShowAddWorkout(true)}
-              className="px-3 py-2 rounded-lg bg-primary"
-            >
-              <Text className="text-sm font-semibold text-primary-foreground">Add</Text>
-            </TouchableOpacity>
-          </View>
-          {workoutsToday.length === 0 ? (
-            <Text className="text-sm text-muted-foreground py-2">
-              No workouts yet. Add one or sync from Health (iOS).
-            </Text>
-          ) : (
-            <View className="gap-2">
-              {workoutsToday.map((w) => (
-                <View
-                  key={w.id}
-                  className="flex-row items-center justify-between py-2 border-b border-border last:border-b-0"
-                >
-                  <View className="flex-1">
-                    <Text className="text-foreground font-medium">{w.activityName}</Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {w.durationMinutes} min · {w.caloriesBurned} kcal
-                      {w.source === 'healthkit' ? ' (Health)' : ''}
-                    </Text>
-                  </View>
-                  {w.source === 'manual' && (
-                    <TouchableOpacity
-                      onPress={() => setWorkoutToDelete(w)}
-                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                      className="p-2"
-                    >
-                      <Trash2 size={18} color={iconColors.primary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Recent days */}
+        {/* Recent days: steps and calories */}
         <View className={`${cardClass} mb-4`}>
           <Text className="text-base font-semibold text-foreground mb-3">
             Last 7 days
           </Text>
           <View className="gap-2">
-            {recentDays.map((day) => (
-              <View
-                key={day.date}
-                className="flex-row items-center justify-between py-2 border-b border-border last:border-b-0"
-              >
-                <View className="flex-row items-center gap-2 flex-1">
-                  <Text
-                    className="text-foreground font-medium min-w-[72px]"
-                    numberOfLines={1}
-                  >
-                    {day.isToday ? 'Today' : formatDateShort(day.date)}
-                  </Text>
-                  <Text className="text-muted-foreground">
-                    {day.steps_count.toLocaleString()} steps
-                  </Text>
-                  {stepsGoal > 0 && day.steps_count >= stepsGoal && (
-                    <CheckCircle size={16} color={iconColors.primary} />
-                  )}
-                </View>
-                <TouchableOpacity
-                  onPress={() => openEditDay(day)}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  className="p-2"
-                >
-                  <Pencil size={18} color={iconColors.primary} />
-                </TouchableOpacity>
+            <View className="flex-row items-center py-2 border-b border-border">
+              <View className="w-[40%]">
+                <Text className="text-muted-foreground font-medium">Date</Text>
               </View>
-            ))}
+              <View className="w-[35%]">
+                <Text className="text-muted-foreground font-medium">Steps</Text>
+              </View>
+              <View className="w-[25%]">
+                <Text className="text-muted-foreground font-medium text-right">Calories</Text>
+              </View>
+            </View>
+            {recentDaysWithWorkoutsAndCalories.map((day) => {
+              const stepsPct =
+                stepsGoal > 0
+                  ? Math.min(100, Math.round((day.steps_count / stepsGoal) * 100))
+                  : null;
+              const stepsLabel =
+                stepsPct !== null
+                  ? `${day.steps_count.toLocaleString()}/${stepsPct}%`
+                  : day.steps_count.toLocaleString();
+              return (
+                <View
+                  key={day.date}
+                  className="flex-row items-center py-2 border-b border-border last:border-b-0"
+                >
+                  <View className="w-[40%]">
+                    <Text
+                      className="text-foreground font-medium text-sm"
+                      numberOfLines={1}
+                    >
+                      {day.isToday ? 'Today' : formatDateWithWeekday(day.date)}
+                    </Text>
+                  </View>
+                  <View className="w-[35%] flex-row items-center gap-1 flex-wrap">
+                    <Text className="text-foreground text-sm">{stepsLabel}</Text>
+                    {stepsGoal > 0 && day.steps_count >= stepsGoal && (
+                      <CheckCircle size={14} color={iconColors.primary} />
+                    )}
+                    <TouchableOpacity
+                      onPress={() => openEditDay(day)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      className="p-1"
+                    >
+                      <Pencil size={16} color={iconColors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                  <View className="w-[25%]">
+                    <Text className="text-foreground text-sm text-right">
+                      {day.activeCalories}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
+          <Link href="/workouts" asChild>
+            <TouchableOpacity className="mt-3 py-2">
+              <Text className="text-sm font-medium text-primary">View workouts →</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+
+        {/* Steps heatmap – last 3 months */}
+        <View className={`${cardClass} mb-4 overflow-hidden`}>
+          <Text className="text-base font-semibold text-foreground mb-3">
+            Last 3 months
+          </Text>
+          <HeatmapGrid dayScores={heatmapStepsData} weeks={14} horizontal />
         </View>
 
         <Text className="text-sm text-muted-foreground px-1">
-          Your daily steps goal is set in Settings → Goals.
+          Steps goal is in Settings → Visible sections.
         </Text>
       </ScrollView>
 
@@ -308,60 +234,6 @@ export function StepsScreen() {
         onSave={handleSaveSteps}
       />
 
-      {/* In-app: Sync not available (e.g. Android) */}
-      <ModalSurface visible={showNotAvailable} onRequestClose={() => setShowNotAvailable(false)} contentClassName="p-6">
-        <Text className="text-xl font-bold text-modal-content-foreground mb-2">
-          Not available
-        </Text>
-        <Text className="text-modal-content-foreground mb-4">
-          Step sync from Health is only available on iOS. You can enter steps manually.
-        </Text>
-        <ModalButton variant="primary" onPress={() => setShowNotAvailable(false)}>
-          OK
-        </ModalButton>
-      </ModalSurface>
-
-      {/* In-app: Sync error */}
-      <ModalSurface visible={!!syncError} onRequestClose={() => setSyncError(null)} contentClassName="p-6">
-        <Text className="text-xl font-bold text-modal-content-foreground mb-2">
-          Sync failed
-        </Text>
-        <Text className="text-modal-content-foreground mb-4">{syncError}</Text>
-        <ModalButton variant="primary" onPress={() => setSyncError(null)}>
-          OK
-        </ModalButton>
-      </ModalSurface>
-
-      <AddWorkoutModal
-        visible={showAddWorkout}
-        onClose={() => setShowAddWorkout(false)}
-        onSave={handleAddWorkout}
-      />
-
-      {/* Delete workout confirmation */}
-      <ModalSurface
-        visible={!!workoutToDelete}
-        onRequestClose={() => setWorkoutToDelete(null)}
-        contentClassName="p-6"
-      >
-        <Text className="text-xl font-bold text-modal-content-foreground mb-2">
-          Delete workout?
-        </Text>
-        <Text className="text-modal-content-foreground mb-4">
-          {workoutToDelete?.activityName} will be removed. This can't be undone.
-        </Text>
-        <ModalButtonRow>
-          <ModalButton variant="secondary" onPress={() => setWorkoutToDelete(null)}>
-            Cancel
-          </ModalButton>
-          <ModalButton
-            variant="primary"
-            onPress={() => workoutToDelete && handleDeleteWorkout(workoutToDelete)}
-          >
-            Delete
-          </ModalButton>
-        </ModalButtonRow>
-      </ModalSurface>
     </SafeAreaView>
   );
 }

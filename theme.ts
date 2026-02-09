@@ -1,83 +1,98 @@
 import { vars } from 'nativewind';
 
 /**
- * Theme tokens are applied at the root and (for modals) must be re-applied
- * to modal content Views so modals get correct colors. All surfaces used in
- * modals (card, input, modal-content) are opaque with visible borders.
+ * Theme tokens — brass/amber warm palette.
+ *
+ * Applied at the root View and re-applied to modal content Views so modals
+ * render with correct colors. All modal surfaces are opaque with visible borders.
+ *
+ * Color philosophy: dark warm background (never pure black), soft off-white text
+ * (never pure white), one muted brass/amber accent. No bright colors, no gradients.
  */
 
 export const lightTheme = vars({
   '--radius': '14',
-  '--background': '253 251 255',
-  '--foreground': '30 27 36',
-  '--card': '255 255 255',
-  '--card-foreground': '30 27 36',
-  '--primary': '139 92 246',
+  '--background': '252 249 242',       // warm off-white
+  '--foreground': '36 32 24',           // warm dark brown
+  '--card': '255 253 247',              // warm white card
+  '--card-foreground': '36 32 24',
+  '--primary': '180 140 60',            // brass accent
   '--primary-foreground': '255 255 255',
-  '--secondary': '237 233 254',
-  '--secondary-foreground': '91 33 182',
-  '--muted': '245 243 255',
-  '--muted-foreground': '113 113 122',
-  '--accent': '196 181 253',
-  '--accent-foreground': '76 29 149',
-  '--destructive': '220 38 38',
+  '--secondary': '245 238 220',         // warm cream
+  '--secondary-foreground': '140 105 40', // dark brass
+  '--muted': '245 241 232',             // warm muted surface
+  '--muted-foreground': '128 120 105',  // warm gray text
+  '--accent': '212 178 106',            // amber highlight
+  '--accent-foreground': '100 75 25',   // dark amber text
+  '--destructive': '200 50 50',         // muted red (less harsh)
   '--destructive-foreground': '255 255 255',
-  '--border': '233 228 250',
-  '--input': '245 243 255',
-  '--input-foreground': '30 27 36',
-  '--ring': '139 92 246',
+  '--border': '230 222 205',            // warm border
+  '--input': '245 241 232',             // matches muted
+  '--input-foreground': '36 32 24',
+  '--ring': '180 140 60',
   // Progress bar (dashboard)
-  '--progress-track': '233 228 250',
-  '--progress-fill': '16 185 129',
-  // Modal: always opaque so overlays and content are visible
+  '--progress-track': '230 222 205',
+  '--progress-fill': '180 140 60',      // brass fill
+  // Modal: opaque warm surfaces
   '--modal-overlay': '0 0 0',
-  '--modal-content': '255 255 255',
-  '--modal-content-foreground': '30 27 36',
-  '--modal-border': '233 228 250',
-  '--chart-1': '59 130 246',
-  '--chart-2': '139 92 246',
-  '--chart-3': '16 185 129',
-  '--chart-4': '251 146 60',
-  '--chart-5': '244 63 94',
+  '--modal-content': '255 253 247',
+  '--modal-content-foreground': '36 32 24',
+  '--modal-border': '230 222 205',
+  '--chart-1': '180 140 60',            // brass
+  '--chart-2': '160 120 50',            // darker brass
+  '--chart-3': '120 140 90',            // muted olive
+  '--chart-4': '170 100 60',            // warm sienna
+  '--chart-5': '140 120 100',           // warm gray
 });
 
-/** Dashboard "Today's Progress" card gradient - light purple, eye-catching */
+/**
+ * Flat amber accent color for the dashboard check-in card.
+ * Kept as a pair (light/dark) for backward compatibility with any
+ * code that still references it, but the home screen should use a
+ * flat surface rather than a gradient.
+ */
+export const progressCardColors = {
+  light: '#B48C3C',
+  dark: '#D4B26A',
+};
+
+/** @deprecated Use progressCardColors. Kept so existing imports don't break. */
 export const progressCardGradient = {
-  light: ['#8B5CF6', '#7C3AED'] as const,
-  dark: ['#A78BFA', '#8B5CF6'] as const,
+  light: ['#B48C3C', '#B48C3C'] as const,
+  dark: ['#D4B26A', '#D4B26A'] as const,
 };
 
 export const darkTheme = vars({
   '--radius': '14',
-  '--background': '18 15 26',
-  '--foreground': '250 250 255',
-  '--card': '45 42 62',
-  '--card-foreground': '250 250 255',
-  '--primary': '167 139 250',
-  '--primary-foreground': '30 27 36',
-  '--secondary': '46 38 75',
-  '--secondary-foreground': '221 214 254',
-  '--muted': '55 48 80',
-  '--muted-foreground': '200 196 220',
-  '--accent': '91 33 182',
-  '--accent-foreground': '237 233 254',
-  '--destructive': '248 113 113',
-  '--destructive-foreground': '30 27 36',
-  '--border': '75 68 110',
-  '--input': '55 48 80',
-  '--input-foreground': '250 250 255',
-  '--ring': '167 139 250',
+  '--background': '22 18 12',           // warm charcoal (not pure black)
+  '--foreground': '240 235 225',         // soft warm white
+  '--card': '38 33 25',                 // warm dark card
+  '--card-foreground': '240 235 225',
+  '--primary': '212 178 106',            // lighter brass for dark mode
+  '--primary-foreground': '30 25 16',
+  '--secondary': '50 42 28',            // warm dark secondary
+  '--secondary-foreground': '230 215 170',
+  '--muted': '48 42 30',                // warm muted surface
+  '--muted-foreground': '180 170 150',  // warm muted text
+  '--accent': '160 125 60',             // amber accent
+  '--accent-foreground': '240 230 200',
+  '--destructive': '220 80 80',         // muted red
+  '--destructive-foreground': '30 25 16',
+  '--border': '65 56 40',               // warm border
+  '--input': '48 42 30',                // matches muted
+  '--input-foreground': '240 235 225',
+  '--ring': '212 178 106',
   // Progress bar (dashboard)
-  '--progress-track': '55 48 80',
-  '--progress-fill': '52 211 153',
-  // Modal: opaque dark surface, light text, visible border
+  '--progress-track': '48 42 30',
+  '--progress-fill': '212 178 106',     // brass fill
+  // Modal: opaque warm dark surface
   '--modal-overlay': '0 0 0',
-  '--modal-content': '45 42 62',
-  '--modal-content-foreground': '250 250 255',
-  '--modal-border': '75 68 110',
-  '--chart-1': '96 165 250',
-  '--chart-2': '167 139 250',
-  '--chart-3': '52 211 153',
-  '--chart-4': '251 191 36',
-  '--chart-5': '251 113 133',
+  '--modal-content': '38 33 25',
+  '--modal-content-foreground': '240 235 225',
+  '--modal-border': '65 56 40',
+  '--chart-1': '212 178 106',           // brass
+  '--chart-2': '180 150 90',            // warm gold
+  '--chart-3': '140 160 110',           // muted sage
+  '--chart-4': '200 140 80',            // warm amber
+  '--chart-5': '170 150 130',           // warm gray
 });

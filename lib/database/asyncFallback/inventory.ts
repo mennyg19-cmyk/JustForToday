@@ -16,10 +16,11 @@ export async function getInventoryEntriesAsync(): Promise<InventoryEntry[]> {
 }
 
 export async function createInventoryEntryAsync(
-  entry: Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>
+  entry: Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>,
+  options?: { createdAt?: string }
 ): Promise<InventoryEntry> {
   const entries = await getInventoryEntriesAsync();
-  const now = new Date().toISOString();
+  const now = options?.createdAt ?? new Date().toISOString();
   const newEntry: InventoryEntry = {
     ...entry,
     id: Date.now().toString(),

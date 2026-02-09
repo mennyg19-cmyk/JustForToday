@@ -1,13 +1,29 @@
-import { CheckCircle, Target, Calendar, Clock, Footprints, Heart, BookOpen } from 'lucide-react-native';
+import { CheckCircle, Target, Calendar, Clock, Footprints, Dumbbell, Heart, BookOpen, RotateCcw } from 'lucide-react-native';
 import type { DashboardData } from './dashboard';
+import { formatCompact, formatStepsLeft } from '@/utils/format';
+
+/** Card id -> image source for full (expanded) dashboard cards. Static require for Metro. */
+export const CARD_IMAGES: Record<string, number> = {
+  habits: require('@/assets/images/habits.png'),
+  daily_renewal: require('@/assets/images/timer.jpeg'),
+  sobriety: require('@/assets/images/sobriety.png'),
+  fasting: require('@/assets/images/fasting.jpeg'),
+  inventory: require('@/assets/images/inventory.png'),
+  steps: require('@/assets/images/steps.jpeg'),
+  workouts: require('@/assets/images/workout.jpeg'),
+  gratitude: require('@/assets/images/gratitude.jpeg'),
+  stoic: require('@/assets/images/stoic.jpeg'),
+};
 
 export type CardConfig = {
   id: string;
   title: string;
   href: string;
   icon: typeof CheckCircle;
-  gradientDark: readonly [string, string];
-  gradientLight: readonly [string, string];
+  /** Flat background color for the icon banner area (dark mode). */
+  bannerColorDark: string;
+  /** Flat background color for the icon banner area (light mode). */
+  bannerColorLight: string;
   iconColorLight: string;
   badgeColorLight: string;
   textColorLight: string;
@@ -17,73 +33,96 @@ export type CardConfig = {
   getBadgeText: (data: DashboardData) => string;
 };
 
+/**
+ * Dashboard card configurations.
+ * All cards use flat muted colors — no gradients, no bright tones.
+ * Badge colors use the primary brass/amber with low opacity.
+ */
 export const getCardConfigs = (dailyProgress: DashboardData): Record<string, CardConfig> => ({
   habits: {
     id: 'habits',
     title: 'Habits',
     href: '/habits',
     icon: CheckCircle,
-    gradientDark: ['#2B1B5A', '#1A1038'] as const,
-    gradientLight: ['#DDD6FE', '#EDE9FE'] as const,
-    iconColorLight: '#5B21B6',
+    bannerColorDark: '#2A2418',
+    bannerColorLight: '#F5EFE0',
+    iconColorLight: '#8C7030',
     badgeColorLight: 'bg-primary/20',
     textColorLight: 'text-primary',
-    badgeColorDark: 'bg-white/10',
-    textColorDark: 'text-white',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
     getSubtitle: (data) => {
       if (!data.hasHabits) return 'No habits added';
       return data.habitsCompleted === data.habitsTotal
-        ? '✓ All habits done'
-        : `${data.habitsCompleted}/${data.habitsTotal} complete`;
+        ? 'All habits done'
+        : `${formatCompact(data.habitsCompleted)}/${formatCompact(data.habitsTotal)} complete`;
     },
-    getBadgeText: (data) => (!data.hasHabits ? '—' : `${data.habitsCompleted}/${data.habitsTotal}`),
+    getBadgeText: (data) =>
+      !data.hasHabits ? '—' : `${formatCompact(data.habitsCompleted)}/${formatCompact(data.habitsTotal)}`,
+  },
+  daily_renewal: {
+    id: 'daily_renewal',
+    title: 'Daily Renewal',
+    href: '/daily-renewal',
+    icon: RotateCcw,
+    bannerColorDark: '#1E1A12',
+    bannerColorLight: '#F0EAD8',
+    iconColorLight: '#8C7030',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
+    getSubtitle: () => 'One day at a time',
+    getBadgeText: (data) =>
+      !data.hasSobrietyCounters ? '—' : data.dailyRenewalCountdown,
   },
   sobriety: {
     id: 'sobriety',
     title: 'Sobriety',
     href: '/sobriety',
     icon: Target,
-    gradientDark: ['#1E3A8A', '#1E1B4B'] as const,
-    gradientLight: ['#DBEAFE', '#EFF6FF'] as const,
-    iconColorLight: '#2563EB',
-    badgeColorLight: 'bg-blue-600/20',
-    textColorLight: 'text-blue-600',
-    badgeColorDark: 'bg-white/10',
-    textColorDark: 'text-white',
+    bannerColorDark: '#1E1A12',
+    bannerColorLight: '#F0EAD8',
+    iconColorLight: '#8C7030',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
     getSubtitle: (data) =>
-      !data.hasSobrietyCounters ? 'No trackers added' : 'Sober from all addictions',
-    getBadgeText: (data) => (!data.hasSobrietyCounters ? '—' : `${data.sobrietyDays}d`),
+      !data.hasSobrietyCounters ? 'No trackers added' : 'Sober today',
+    getBadgeText: (data) =>
+      !data.hasSobrietyCounters ? '—' : `${formatCompact(data.sobrietyDays)}d`,
   },
   fasting: {
     id: 'fasting',
     title: 'Fasting',
     href: '/fasting',
     icon: Clock,
-    gradientDark: ['#7C2D12', '#431407'] as const,
-    gradientLight: ['#FED7AA', '#FEE2E2'] as const,
-    iconColorLight: '#EA580C',
-    badgeColorLight: 'bg-orange-600/20',
-    textColorLight: 'text-orange-600',
-    badgeColorDark: 'bg-white/10',
-    textColorDark: 'text-white',
-    getSubtitle: (data) => `${data.fastingHours}h fasted today`,
+    bannerColorDark: '#241C10',
+    bannerColorLight: '#F5EDD8',
+    iconColorLight: '#A07830',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
+    getSubtitle: (data) => `${formatCompact(data.fastingHours)}h fasted today`,
     getBadgeText: (data) =>
       data.fastingHoursGoal > 0
-        ? `${data.fastingHours}/${data.fastingHoursGoal}h`
-        : `${data.fastingHours}h`,
+        ? `${formatCompact(data.fastingHours)}/${formatCompact(data.fastingHoursGoal)}h`
+        : `${formatCompact(data.fastingHours)}h`,
   },
   inventory: {
     id: 'inventory',
     title: 'Inventory',
     href: '/inventory',
     icon: Calendar,
-    gradientDark: ['#14532D', '#052E16'] as const,
-    gradientLight: ['#DCFCE7', '#F0FDF4'] as const,
-    iconColorLight: '#16A34A',
-    badgeColorLight: 'bg-green-600/20',
-    textColorLight: 'text-green-600',
-    badgeColorDark: 'bg-white/10',
-    textColorDark: 'text-white',
+    bannerColorDark: '#1A2014',
+    bannerColorLight: '#EEF2E4',
+    iconColorLight: '#6A7A40',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
     getSubtitle: (data) => {
       if (data.inventoryCount === 0) return 'Not started';
       if (data.inventoriesPerDayGoal > 0 && data.inventoryCount >= data.inventoriesPerDayGoal)
@@ -92,58 +131,95 @@ export const getCardConfigs = (dailyProgress: DashboardData): Record<string, Car
     },
     getBadgeText: (data) =>
       data.inventoriesPerDayGoal > 0
-        ? `${data.inventoryCount}/${data.inventoriesPerDayGoal}`
-        : `${data.inventoryCount}`,
+        ? `${formatCompact(data.inventoryCount)}/${formatCompact(data.inventoriesPerDayGoal)}`
+        : formatCompact(data.inventoryCount),
   },
   steps: {
     id: 'steps',
-    title: 'Steps & Exercise',
+    title: 'Steps',
     href: '/steps',
     icon: Footprints,
-    gradientDark: ['#312E81', '#1E1B4B'] as const,
-    gradientLight: ['#C7D2FE', '#E0E7FF'] as const,
-    iconColorLight: '#4F46E5',
-    badgeColorLight: 'bg-indigo-600/20',
-    textColorLight: 'text-indigo-600',
-    badgeColorDark: 'bg-white/10',
-    textColorDark: 'text-white',
-    getSubtitle: (data) => `${data.stepsCount.toLocaleString()} steps today`,
+    bannerColorDark: '#1C1A14',
+    bannerColorLight: '#F0EDE0',
+    iconColorLight: '#8A7A50',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
+    getSubtitle: (data) => {
+      const stepsLeft = Math.max(0, data.stepsGoal - data.stepsCount);
+      if (data.stepsGoal > 0) {
+        return `${formatCompact(stepsLeft)} steps left`;
+      }
+      return `${formatCompact(data.stepsCount)} steps`;
+    },
+    getBadgeText: (data) => {
+      const stepsLeft = Math.max(0, data.stepsGoal - data.stepsCount);
+      return data.stepsGoal > 0 ? formatStepsLeft(stepsLeft) : formatCompact(data.stepsCount);
+    },
+  },
+  workouts: {
+    id: 'workouts',
+    title: 'Workouts',
+    href: '/workouts',
+    icon: Dumbbell,
+    bannerColorDark: '#1A1810',
+    bannerColorLight: '#F2EEE0',
+    iconColorLight: '#8A7A48',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
+    getSubtitle: (data) =>
+      data.workoutsGoal > 0
+        ? `${data.workoutsCount}/${data.workoutsGoal} workouts today`
+        : data.workoutsCount > 0
+          ? `${data.workoutsCount} workout${data.workoutsCount === 1 ? '' : 's'} today`
+          : 'No workouts yet',
     getBadgeText: (data) =>
-      data.stepsGoal > 0
-        ? `${data.stepsCount.toLocaleString()}/${data.stepsGoal.toLocaleString()}`
-        : `${data.stepsCount.toLocaleString()}`,
+      data.workoutsGoal > 0
+        ? `${data.workoutsCount}/${data.workoutsGoal}`
+        : data.workoutsCount > 0
+          ? String(data.workoutsCount)
+          : '—',
   },
   gratitude: {
     id: 'gratitude',
     title: 'Gratitude',
     href: '/gratitude',
     icon: Heart,
-    gradientDark: ['#831843', '#4C0519'] as const,
-    gradientLight: ['#FBCFE8', '#FCE7F3'] as const,
-    iconColorLight: '#BE185D',
-    badgeColorLight: 'bg-pink-600/20',
-    textColorLight: 'text-pink-600',
-    badgeColorDark: 'bg-white/10',
-    textColorDark: 'text-white',
-    getSubtitle: (data) =>
-      data.gratitudeCount === 0
-        ? 'No entries yet'
-        : `${data.gratitudeCount} ${data.gratitudeCount === 1 ? 'entry' : 'entries'}`,
-    getBadgeText: (data) => `${data.gratitudeCount}`,
+    bannerColorDark: '#241A14',
+    bannerColorLight: '#F5ECE4',
+    iconColorLight: '#A07048',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
+    getSubtitle: (data) => {
+      if (data.gratitudeCount === 0) return 'No entries yet';
+      if (data.gratitudesPerDayGoal > 0 && data.gratitudeCount >= data.gratitudesPerDayGoal)
+        return 'Goal met';
+      return `${formatCompact(data.gratitudeCount)} ${data.gratitudeCount === 1 ? 'entry' : 'entries'}`;
+    },
+    getBadgeText: (data) =>
+      data.gratitudesPerDayGoal > 0
+        ? `${formatCompact(data.gratitudeCount)}/${formatCompact(data.gratitudesPerDayGoal)}`
+        : formatCompact(data.gratitudeCount),
   },
   stoic: {
     id: 'stoic',
-    title: 'Stoic',
+    title: 'Stoic Handbook',
     href: '/stoic',
     icon: BookOpen,
-    gradientDark: ['#422006', '#292524'] as const,
-    gradientLight: ['#FEF3C7', '#FDE68A'] as const,
-    iconColorLight: '#B45309',
-    badgeColorLight: 'bg-amber-600/20',
-    textColorLight: 'text-amber-700',
-    badgeColorDark: 'bg-white/10',
-    textColorDark: 'text-white',
-    getSubtitle: () => 'Reflections & practices',
-    getBadgeText: () => '—',
+    bannerColorDark: '#201A10',
+    bannerColorLight: '#F5EEDC',
+    iconColorLight: '#8C7030',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
+    getSubtitle: (data) =>
+      data.stoicReflectionDoneToday ? "Today's reflection done" : 'Weekly reflections',
+    getBadgeText: (data) => (data.stoicReflectionDoneToday ? 'Done' : '—'),
   },
 });

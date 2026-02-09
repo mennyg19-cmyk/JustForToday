@@ -7,6 +7,7 @@ import {
   updateSobrietyCounter,
   deleteSobrietyCounter,
   saveSobrietyCountersOrder,
+  setLastDailyRenewal,
 } from '../database';
 import { formatDateKey } from '@/utils/date';
 
@@ -39,11 +40,17 @@ export function useSobriety() {
   }, []);
 
   const addCounter = useCallback(
-    async (displayName: string, actualName?: string, notes?: string) => {
+    async (
+      displayName: string,
+      actualName?: string,
+      notes?: string,
+      startDateISO?: string
+    ) => {
       const created = await createSobrietyCounter(
         displayName.trim(),
         actualName?.trim() || undefined,
-        notes?.trim() || undefined
+        notes?.trim() || undefined,
+        startDateISO
       );
       setCounters((prev) => [...prev, created]);
       return created;
@@ -120,15 +127,63 @@ export function useSobriety() {
     await saveSobrietyCountersOrder(newOrder);
   }, []);
 
+  /** Returns time since start (from last relapse or set start date/time). Includes formatted timer string. */
   function calculateTimeSince(startDate: string) {
     const start = new Date(startDate);
-    const diff = currentTime.getTime() - start.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    return { days, hours, minutes, seconds };
+    const now = currentTime;
+    let diffMs = now.getTime() - start.getTime();
+    if (diffMs < 0) diffMs = 0;
+
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+    // Y/M/D by date math (so < 1 year => start with months)
+    let cur = new Date(start.getTime());
+    let years = 0;
+    while (true) {
+      const next = new Date(cur);
+      next.setFullYear(next.getFullYear() + 1);
+      if (next > now) break;
+      cur = next;
+      years++;
+    }
+    let months = 0;
+    while (true) {
+      const next = new Date(cur);
+      next.setMonth(next.getMonth() + 1);
+      if (next > now) break;
+      cur = next;
+      months++;
+    }
+    const remainingDays = Math.floor((now.getTime() - cur.getTime()) / (1000 * 60 * 60 * 24));
+    const timePart = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    const parts: string[] = [];
+    if (years > 0) parts.push(`${years}y`);
+    if (months > 0 || years > 0) parts.push(`${months}m`);
+    parts.push(`${remainingDays}d`);
+    parts.push(timePart);
+    const formattedTimer = parts.join(' ');
+
+    return {
+      days,
+      hours,
+      minutes,
+      seconds,
+      years,
+      months,
+      remainingDays,
+      formattedTimer,
+    };
   }
+
+  const renewDailyCommitment = useCallback(async (counterId: string) => {
+    const iso = new Date().toISOString();
+    const updated = await setLastDailyRenewal(counterId, iso);
+    setCounters((prev) => prev.map((c) => (c.id === counterId ? updated : c)));
+    return updated;
+  }, []);
 
   return {
     counters,
@@ -143,5 +198,6 @@ export function useSobriety() {
     reorder,
     calculateTimeSince,
     currentTime,
+    renewDailyCommitment,
   };
 }

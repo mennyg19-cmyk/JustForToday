@@ -39,11 +39,21 @@ export function formatDateDisplay(date: Date | string): string {
  * Format date for short display (e.g., "Jan 15")
  */
 export function formatDateShort(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
   return dateObj.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
   });
+}
+
+/**
+ * Format date with weekday for display (e.g., "Mon, Jan 6")
+ */
+export function formatDateWithWeekday(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
+  const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+  const short = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${weekday}, ${short}`;
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   getStepsForDates,
   setStepsForDate,
   getWorkoutsForDate,
+  getWorkoutsForDates,
   addWorkout,
   deleteWorkout,
 } from '../database';
@@ -16,9 +17,16 @@ import type { Workout } from '@/lib/database/schema';
 import * as HealthKit from '@/lib/healthKit';
 
 const RECENT_DAYS = 7;
+const HEATMAP_DAYS = 14 * 7; // 98 days ~ 3 months
 
 export interface RecentStepsDay extends StepsDayRecord {
   isToday: boolean;
+}
+
+export interface RecentDayWithWorkoutsAndCalories extends RecentStepsDay {
+  workoutsCount: number;
+  workoutsCalories: number;
+  activeCalories: number; // estimated from steps + workout calories for that day
 }
 
 export type ActiveCaloriesSource = 'healthkit' | 'estimated' | null;
@@ -26,7 +34,14 @@ export type ActiveCaloriesSource = 'healthkit' | 'estimated' | null;
 export function useSteps() {
   const [stepsToday, setStepsToday] = useState<number>(0);
   const [stepsGoal, setStepsGoal] = useState<number>(10000);
+  const [workoutsGoal, setWorkoutsGoal] = useState<number>(1);
   const [recentDays, setRecentDays] = useState<RecentStepsDay[]>([]);
+  const [recentDaysWithWorkoutsAndCalories, setRecentDaysWithWorkoutsAndCalories] = useState<
+    RecentDayWithWorkoutsAndCalories[]
+  >([]);
+  const [heatmapStepsData, setHeatmapStepsData] = useState<{ dateKey: string; score: number }[]>(
+    []
+  );
   const [workoutsToday, setWorkoutsToday] = useState<Workout[]>([]);
   const [activeCaloriesToday, setActiveCaloriesToday] = useState<number>(0);
   const [activeCaloriesSource, setActiveCaloriesSource] = useState<ActiveCaloriesSource>(null);
@@ -38,19 +53,49 @@ export function useSteps() {
     try {
       setError(null);
       const dateKeys = getDateKeysForLastDays(RECENT_DAYS);
+      const heatmapDateKeys = getDateKeysForLastDays(HEATMAP_DAYS);
       const todayKey = getTodayKey();
-      const [count, goals, dayRecords, manualWorkouts] = await Promise.all([
-        getTodayStepsCount(),
-        getGoals(),
-        getStepsForDates(dateKeys),
-        getWorkoutsForDate(todayKey),
-      ]);
+      const [count, goals, dayRecords, heatmapRecords, manualWorkouts, workoutsByDate] =
+        await Promise.all([
+          getTodayStepsCount(),
+          getGoals(),
+          getStepsForDates(dateKeys),
+          getStepsForDates(heatmapDateKeys),
+          getWorkoutsForDate(todayKey),
+          getWorkoutsForDates(dateKeys),
+        ]);
       setStepsToday(count);
       setStepsGoal(goals.stepsGoal);
-      setRecentDays(
-        dayRecords.map((r) => ({
-          ...r,
-          isToday: r.date === todayKey,
+      setWorkoutsGoal(goals.workoutsGoal);
+      const recentWithMeta = dayRecords.map((r) => ({
+        ...r,
+        isToday: r.date === todayKey,
+      }));
+      setRecentDays(recentWithMeta);
+
+      const workoutsMap = new Map<string, Workout[]>();
+      workoutsByDate.forEach((list, i) => {
+        if (dateKeys[i]) workoutsMap.set(dateKeys[i], list);
+      });
+      setRecentDaysWithWorkoutsAndCalories(
+        recentWithMeta.map((day) => {
+          const dayWorkouts = workoutsMap.get(day.date) ?? [];
+          const workoutsCalories = dayWorkouts.reduce((s, w) => s + w.caloriesBurned, 0);
+          const activeCalories = Math.round(day.steps_count * CALORIES_PER_STEP_ESTIMATE) + workoutsCalories;
+          return {
+            ...day,
+            workoutsCount: dayWorkouts.length,
+            workoutsCalories,
+            activeCalories,
+          };
+        })
+      );
+
+      const stepsGoalForHeatmap = goals.stepsGoal || 1;
+      setHeatmapStepsData(
+        heatmapRecords.map((r) => ({
+          dateKey: r.date,
+          score: Math.min(100, Math.round((r.steps_count / stepsGoalForHeatmap) * 100)),
         }))
       );
 
@@ -117,10 +162,22 @@ export function useSteps() {
 
   const addManualWorkout = useCallback(
     async (activityName: string, durationMinutes: number, caloriesBurned: number) => {
+      await addManualWorkoutForDate(getTodayKey(), activityName, durationMinutes, caloriesBurned);
+    },
+    []
+  );
+
+  const addManualWorkoutForDate = useCallback(
+    async (
+      dateKey: string,
+      activityName: string,
+      durationMinutes: number,
+      caloriesBurned: number
+    ) => {
       const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const workout: Workout = {
         id,
-        date: getTodayKey(),
+        date: dateKey,
         activityName,
         durationMinutes,
         caloriesBurned,
@@ -195,7 +252,10 @@ export function useSteps() {
   return {
     stepsToday,
     stepsGoal,
+    workoutsGoal,
     recentDays,
+    recentDaysWithWorkoutsAndCalories,
+    heatmapStepsData,
     workoutsToday,
     activeCaloriesToday,
     activeCaloriesSource,
@@ -205,6 +265,7 @@ export function useSteps() {
     refresh,
     setManualSteps,
     addManualWorkout,
+    addManualWorkoutForDate,
     removeWorkout,
     syncFromHealthKit,
   };

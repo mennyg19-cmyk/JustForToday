@@ -11,8 +11,12 @@ import { HabitCard } from './components/HabitCard';
 import { HabitFormModal } from './components/HabitFormModal';
 import { HabitCalendar } from './components/HabitCalendar';
 import type { Habit } from './types';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export function HabitsScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string }>();
+  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
   const {
     habits,
     loading,
@@ -20,6 +24,7 @@ export function HabitsScreen() {
     toggleHabit,
     addHabit,
     deleteHabit,
+    updateHabit,
     reorderHabits,
     completedCount,
     totalCount,
@@ -63,16 +68,25 @@ export function HabitsScreen() {
     async (habitId: string, date: string) => {
       try {
         await toggleHabit(habitId, date);
-        // Refresh selected habit
         const updated = habits.find((h) => h.id === habitId);
-        if (updated) {
-          setSelectedHabit(updated);
-        }
+        if (updated) setSelectedHabit(updated);
       } catch (err) {
         console.error('Failed to toggle date:', err);
       }
     },
     [habits, toggleHabit]
+  );
+
+  const handleSaveHabitEdit = useCallback(
+    async (habitId: string, updates: { name?: string; trackingStartDate?: string }) => {
+      try {
+        const updated = await updateHabit(habitId, updates);
+        setSelectedHabit(updated);
+      } catch (err) {
+        console.error('Failed to save habit edit:', err);
+      }
+    },
+    [updateHabit]
   );
 
   if (loading) {
@@ -82,7 +96,7 @@ export function HabitsScreen() {
   if (error) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <AppHeader title="Habits" rightSlot={<ThemeToggle />} />
+        <AppHeader title="Habits" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
         <ErrorView message={error} />
       </SafeAreaView>
     );
@@ -90,7 +104,7 @@ export function HabitsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <AppHeader title="Habits" rightSlot={<ThemeToggle />} />
+      <AppHeader title="Habits" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 128 }}>
         <View className="p-6 gap-3">
@@ -171,6 +185,7 @@ export function HabitsScreen() {
         visible={selectedHabit !== null}
         onClose={() => setSelectedHabit(null)}
         onToggleDate={handleToggleCalendarDate}
+        onSaveEdit={handleSaveHabitEdit}
       />
     </SafeAreaView>
   );

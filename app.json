@@ -23,25 +23,24 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#E6F4FE"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mennyg19.lifetrackpro"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -54,6 +53,15 @@
         "@oleg_svetlichnyi/expo-icloud-storage",
         {
           "icloudContainerIdentifier": "iCloud.com.mennyg19.lifetrackpro"
+        }
+      ],
+      "expo-font",
+      "expo-sqlite",
+      "expo-web-browser",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "LifeTrack Pro needs access to your contacts so you can save trusted people to call during difficult moments."
         }
       ]
     ],
@@ -71,7 +79,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/d8c092ec-edbb-41c4-aefd-fb97ded85750"
+      "url": "https://u.expo.dev/86c6804e-82ed-489e-bd9a-cbc01330fa56"
     }
   }
 }

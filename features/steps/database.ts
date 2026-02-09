@@ -99,6 +99,31 @@ export async function getWorkoutsForDate(dateKey: string): Promise<Workout[]> {
   return rows.map(rowToWorkout);
 }
 
+/** Get workouts for multiple dates. Returns array in same order as dateKeys; each element is the list of workouts for that date. */
+export async function getWorkoutsForDates(dateKeys: string[]): Promise<Workout[][]> {
+  if (dateKeys.length === 0) return [];
+  if (!(await isSQLiteAvailable())) {
+    return Promise.all(dateKeys.map((key) => asyncWorkouts.getWorkoutsForDateAsync(key)));
+  }
+  const db = await getDatabase();
+  const placeholders = dateKeys.map(() => '?').join(',');
+  const rows = await db.getAllAsync<{
+    id: string;
+    date: string;
+    activity_name: string;
+    duration_minutes: number;
+    calories_burned: number;
+    source: 'healthkit' | 'manual';
+  }>(`SELECT * FROM workouts WHERE date IN (${placeholders}) ORDER BY date, id DESC`, dateKeys);
+  const byDate = new Map<string, Workout[]>();
+  for (const date of dateKeys) byDate.set(date, []);
+  for (const r of rows) {
+    const list = byDate.get(r.date);
+    if (list) list.push(rowToWorkout(r));
+  }
+  return dateKeys.map((date) => byDate.get(date) ?? []);
+}
+
 export async function addWorkout(workout: Workout): Promise<void> {
   if (!(await isSQLiteAvailable())) {
     await asyncWorkouts.addWorkoutAsync(workout);

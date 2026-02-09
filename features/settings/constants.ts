@@ -1,18 +1,8 @@
 import type { ComponentType } from 'react';
-import type { AppVisibility } from '@/lib/database/schema';
-import {
-  CheckCircle,
-  Target,
-  Clock,
-  Calendar,
-  Footprints,
-  Heart,
-  BookOpen,
-  Sun,
-  Moon,
-  Smartphone,
-} from 'lucide-react-native';
 import type { ThemeMode } from '@/lib/settings';
+import { Sun, Moon, Smartphone } from 'lucide-react-native';
+import { MODULES, getSectionGroups } from '@/lib/modules';
+import type { AppVisibility } from '@/lib/database/schema';
 
 export interface SectionConfig {
   id: keyof AppVisibility;
@@ -21,15 +11,14 @@ export interface SectionConfig {
   icon: ComponentType<{ size?: number; color?: string }>;
 }
 
-export const SECTIONS: SectionConfig[] = [
-  { id: 'habits', label: 'Habits', description: 'Track and build daily habits', icon: CheckCircle },
-  { id: 'sobriety', label: 'Sobriety', description: 'Track recovery journey', icon: Target },
-  { id: 'fasting', label: 'Fasting', description: 'Intermittent fasting tracking', icon: Clock },
-  { id: 'inventory', label: 'Step 10 Inventory', description: 'Daily reflections & inventory', icon: Calendar },
-  { id: 'steps', label: 'Steps & Exercise', description: 'Daily step count & activity', icon: Footprints },
-  { id: 'gratitude', label: 'Gratitude Journal', description: 'Daily gratitude entries', icon: Heart },
-  { id: 'stoic', label: 'Stoic', description: 'Stoic reflections and practices', icon: BookOpen },
-];
+export const SECTION_GROUPS = getSectionGroups();
+
+export const SECTIONS: SectionConfig[] = MODULES.map((m) => ({
+  id: m.id,
+  label: m.label,
+  description: m.description,
+  icon: m.icon,
+}));
 
 export interface ThemeOption {
   mode: ThemeMode;
@@ -44,7 +33,10 @@ export const THEME_OPTIONS: ThemeOption[] = [
 ];
 
 export const DEFAULT_GOALS = {
+  habitsGoal: 0,
   stepsGoal: 10000,
+  workoutsGoal: 1,
   fastingHoursGoal: 16,
   inventoriesPerDayGoal: 2,
+  gratitudesPerDayGoal: 1,
 } as const;

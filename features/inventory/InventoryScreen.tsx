@@ -34,6 +34,7 @@ import {
   ASSETS,
   DEFECT_TO_ASSET,
 } from '@/lib/step10Data';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 type Tab = 'morning' | 'nightly' | 'step10';
 
@@ -75,6 +76,9 @@ const emptyStep10Payload = (type: Tab): Omit<InventoryEntry, 'id' | 'createdAt' 
 });
 
 export function InventoryScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string }>();
+  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
   const scrollRef = useRef<ScrollView | null>(null);
   const {
     entries,
@@ -120,6 +124,7 @@ export function InventoryScreen() {
 
   // Nightly
   const [editingNightly, setEditingNightly] = useState(false);
+  const [nightlySaveForYesterday, setNightlySaveForYesterday] = useState<boolean | null>(null);
   const [nightlyResent, setNightlyResent] = useState<boolean | null>(null);
   const [nightlyResentDetails, setNightlyResentDetails] = useState('');
   const [nightlySelfish, setNightlySelfish] = useState<boolean | null>(null);
@@ -272,11 +277,25 @@ export function InventoryScreen() {
         });
         setEditingNightly(false);
       } else {
-        await addEntry({
-          ...emptyStep10Payload('nightly'),
-          prayed: nightlyPrayed,
-          notes: JSON.stringify(nightlyData),
-        });
+        const now = new Date();
+        const hour = now.getHours();
+        const saveForYesterday = nightlySaveForYesterday ?? (hour < 16);
+        const createdAtOverride =
+          saveForYesterday
+            ? (() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 1);
+                return d.toISOString();
+              })()
+            : undefined;
+        await addEntry(
+          {
+            ...emptyStep10Payload('nightly'),
+            prayed: nightlyPrayed,
+            notes: JSON.stringify(nightlyData),
+          },
+          createdAtOverride ? { createdAt: createdAtOverride } : undefined
+        );
       }
       setNightlyResent(null);
       setNightlyResentDetails('');
@@ -505,7 +524,7 @@ export function InventoryScreen() {
   if (error) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <AppHeader title="Inventory" rightSlot={<ThemeToggle />} />
+        <AppHeader title="Inventory" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
           <Text className="text-muted-foreground text-center">{error}</Text>
@@ -516,7 +535,7 @@ export function InventoryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <AppHeader title="Inventory" rightSlot={<ThemeToggle />} />
+      <AppHeader title="Inventory" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <View className="flex-row border-b border-border px-6">
         {(['morning', 'nightly', 'step10'] as const).map((tab) => (
@@ -654,6 +673,28 @@ export function InventoryScreen() {
                       <Switch value={nightlyPrayed} onValueChange={setNightlyPrayed} {...switchColors} />
                     </View>
                   </ModalSection>
+                  {!editingNightly && (
+                    <ModalSection>
+                      <ModalLabel>Save for</ModalLabel>
+                      <View className="flex-row gap-3 mt-2">
+                        <TouchableOpacity
+                          onPress={() => setNightlySaveForYesterday(false)}
+                          className={`flex-1 py-2.5 rounded-lg border-2 ${nightlySaveForYesterday === false ? 'border-primary bg-primary/10' : 'border-border bg-muted/50'}`}
+                        >
+                          <Text className={`text-center font-medium ${nightlySaveForYesterday === false ? 'text-primary' : 'text-muted-foreground'}`}>Today</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setNightlySaveForYesterday(true)}
+                          className={`flex-1 py-2.5 rounded-lg border-2 ${nightlySaveForYesterday !== false ? 'border-primary bg-primary/10' : 'border-border bg-muted/50'}`}
+                        >
+                          <Text className={`text-center font-medium ${nightlySaveForYesterday !== false ? 'text-primary' : 'text-muted-foreground'}`}>Yesterday</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text className="text-xs text-muted-foreground mt-1.5">
+                        Before 4pm we default to Yesterday so last night&apos;s inventory counts for that day.
+                      </Text>
+                    </ModalSection>
+                  )}
                   <ModalButtonRow>
                     <ModalButton onPress={handleSaveNightly} variant="primary">Save Nightly</ModalButton>
                     <ModalButton
@@ -661,6 +702,7 @@ export function InventoryScreen() {
                         if (editingNightly) {
                           setEditingNightly(false);
                         } else {
+                          setNightlySaveForYesterday(null);
                           setNightlyResent(null);
                           setNightlyResentDetails('');
                           setNightlySelfish(null);
