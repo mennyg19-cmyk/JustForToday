@@ -32,24 +32,34 @@ export async function isSQLiteAvailable(): Promise<boolean> {
  * Throws if SQLite is not available (e.g. in Expo Go).
  */
 export async function getDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
-  const available = await isSQLiteAvailable();
-  if (!available) {
-    throw new Error('EXPO_GO_NO_SQLITE');
-  }
+  try {
+    const available = await isSQLiteAvailable();
+    if (!available) {
+      throw new Error('EXPO_GO_NO_SQLITE');
+    }
 
-  if (!dbInstance) {
-    const SQLite = await import('expo-sqlite');
-    dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
-  }
+    if (!dbInstance) {
+      const SQLite = await import('expo-sqlite');
+      dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
+    }
 
-  // Always run migrations if they haven't been verified in this JS session.
-  // runMigrations is idempotent — it skips already-applied versions.
-  if (!migrationsVerified) {
-    await runMigrations(dbInstance);
-    migrationsVerified = true;
-  }
+    // Always run migrations if they haven't been verified in this JS session.
+    // runMigrations is idempotent — it skips already-applied versions.
+    if (!migrationsVerified) {
+      await runMigrations(dbInstance);
+      migrationsVerified = true;
+    }
 
-  return dbInstance;
+    return dbInstance;
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    // Clear failed instance so next attempt can retry
+    dbInstance = null;
+    migrationsVerified = false;
+    throw new Error(
+      `Failed to initialize database: ${error instanceof Error ? error.message : 'Unknown error'}. Please try restarting the app.`
+    );
+  }
 }
 
 /**

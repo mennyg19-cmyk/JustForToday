@@ -28,6 +28,7 @@ const SETTINGS_KEYS = {
   STOIC_WEEK_MODE: 'stoic_week_mode',
   STOIC_START_DATE: 'stoic_start_date',
   PROFILE: 'user_profile',
+  ONBOARDING_COMPLETED: 'onboarding_completed',
 } as const;
 
 /**
@@ -419,6 +420,22 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
     return;
   }
   await setSetting(SETTINGS_KEYS.PROFILE, profile);
+}
+
+// Onboarding Completion
+export async function hasCompletedOnboarding(): Promise<boolean> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.hasCompletedOnboardingAsync();
+  }
+  return getSetting<boolean>(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
+}
+
+export async function setOnboardingCompleted(): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setOnboardingCompletedAsync();
+    return;
+  }
+  await setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
 }
 
 /**

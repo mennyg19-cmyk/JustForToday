@@ -25,6 +25,7 @@ const KEYS = {
   STOIC_WEEK_MODE: PREFIX + 'stoic_week_mode',
   STOIC_START_DATE: PREFIX + 'stoic_start_date',
   PROFILE: PREFIX + 'user_profile',
+  ONBOARDING_COMPLETED: PREFIX + 'onboarding_completed',
 };
 
 async function getJson<T>(key: string, defaultValue: T): Promise<T> {
@@ -211,4 +212,14 @@ export async function getUserProfileAsync(): Promise<UserProfile> {
 
 export async function saveUserProfileAsync(profile: UserProfile): Promise<void> {
   await setJson(KEYS.PROFILE, profile);
+}
+
+// -- Onboarding --
+
+export async function hasCompletedOnboardingAsync(): Promise<boolean> {
+  return getJson<boolean>(KEYS.ONBOARDING_COMPLETED, false);
+}
+
+export async function setOnboardingCompletedAsync(): Promise<void> {
+  await setJson(KEYS.ONBOARDING_COMPLETED, true);
 }

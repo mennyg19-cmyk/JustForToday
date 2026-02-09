@@ -1,10 +1,26 @@
-import * as AppleHealthKit from 'react-native-health';
+import { Platform } from 'react-native';
+
+let AppleHealthKit: typeof import('react-native-health') | null = null;
+
+// Only import HealthKit on iOS
+if (Platform.OS === 'ios') {
+  try {
+    AppleHealthKit = require('react-native-health');
+  } catch {
+    console.warn('HealthKit module not available');
+  }
+}
 
 /**
  * Initialize HealthKit permissions
  * Must be called before accessing any health data
+ * Returns false on Android (HealthKit is iOS-only)
  */
 export const initHealthKit = async (): Promise<boolean> => {
+  if (Platform.OS !== 'ios') {
+    return false;
+  }
+
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.initHealthKit !== 'function') {
       console.warn('HealthKit not available: initHealthKit is missing');
@@ -35,8 +51,13 @@ export const initHealthKit = async (): Promise<boolean> => {
 
 /**
  * Request HealthKit step count permission from user
+ * Returns false on Android (HealthKit is iOS-only)
  */
 export const requestStepPermission = async (): Promise<boolean> => {
+  if (Platform.OS !== 'ios') {
+    return false;
+  }
+
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.initHealthKit !== 'function') {
       console.warn('HealthKit not available: initHealthKit is missing');
@@ -67,8 +88,13 @@ export const requestStepPermission = async (): Promise<boolean> => {
 
 /**
  * Request HealthKit permissions for steps, workouts, and active energy (for full fitness sync).
+ * Returns false on Android (HealthKit is iOS-only)
  */
 export const requestFitnessPermissions = async (): Promise<boolean> => {
+  if (Platform.OS !== 'ios') {
+    return false;
+  }
+
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.initHealthKit !== 'function') {
       console.warn('HealthKit not available: initHealthKit is missing');
@@ -115,8 +141,13 @@ export interface HealthKitWorkout {
 
 /**
  * Fetch workouts for a specific date from HealthKit
+ * Returns empty array on Android (HealthKit is iOS-only)
  */
 export const getWorkoutsForDate = async (date: Date): Promise<HealthKitWorkout[]> => {
+  if (Platform.OS !== 'ios') {
+    return [];
+  }
+
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.getAnchoredWorkouts !== 'function') {
       return [];
@@ -163,8 +194,13 @@ export const getWorkoutsForDate = async (date: Date): Promise<HealthKitWorkout[]
 
 /**
  * Fetch total active energy burned (kcal) for a specific date
+ * Returns null on Android (HealthKit is iOS-only)
  */
 export const getActiveEnergyForDate = async (date: Date): Promise<number | null> => {
+  if (Platform.OS !== 'ios') {
+    return null;
+  }
+
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.getActiveEnergyBurned !== 'function') {
       return null;
@@ -202,9 +238,13 @@ export const getActiveEnergyForDate = async (date: Date): Promise<number | null>
 /**
  * Fetch step count for a specific date
  * @param date - The date to fetch steps for
- * @returns Step count, or null if unavailable
+ * @returns Step count, or null if unavailable (always null on Android)
  */
 export const getStepsForDate = async (date: Date): Promise<number | null> => {
+  if (Platform.OS !== 'ios') {
+    return null;
+  }
+
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.getStepCount !== 'function') {
       console.warn('HealthKit not available: getStepCount is missing');
@@ -252,20 +292,27 @@ export const getStepsForDate = async (date: Date): Promise<number | null> => {
 
 /**
  * Fetch step count for today
- * @returns Today's step count, or null if unavailable
+ * @returns Today's step count, or null if unavailable (always null on Android)
  */
 export const getTodaySteps = async (): Promise<number | null> => {
+  if (Platform.OS !== 'ios') {
+    return null;
+  }
   return getStepsForDate(new Date());
 };
 
 /**
  * Fetch step count for the past N days
  * @param days - Number of days to fetch
- * @returns Array of { date, steps } objects
+ * @returns Array of { date, steps } objects (empty array on Android)
  */
 export const getStepsForPastDays = async (
   days: number
 ): Promise<Array<{ date: string; steps: number }>> => {
+  if (Platform.OS !== 'ios') {
+    return [];
+  }
+
   try {
     const results: Array<{ date: string; steps: number }> = [];
 

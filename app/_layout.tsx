@@ -6,7 +6,7 @@
  * to /hard-moment without disrupting the current screen.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -14,7 +14,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Home, Settings, Heart } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { initializeSync } from '@/lib/sync';
-import { ensureFirstLaunchInitialized } from '@/lib/settings/database';
+import { ensureFirstLaunchInitialized, hasCompletedOnboarding } from '@/lib/settings/database';
+import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
 import '@/global.css';
 
 function TabNavigator() {
@@ -26,7 +27,7 @@ function TabNavigator() {
     ensureFirstLaunchInitialized().catch((err) => {
       console.error('First launch init failed:', err);
     });
-    // Initialize iCloud sync on app start
+    // Initialize iCloud sync on app start (iOS only)
     initializeSync().catch((err) => {
       console.error('Failed to initialize sync:', err);
     });
@@ -175,12 +176,41 @@ function HardMomentFAB() {
 }
 
 export default function RootLayout() {
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check if onboarding has been completed on app launch
+    hasCompletedOnboarding()
+      .then((completed) => setOnboardingComplete(completed))
+      .catch((err) => {
+        console.error('Failed to check onboarding status:', err);
+        setOnboardingComplete(true); // Default to showing app if check fails
+      });
+  }, []);
+
+  // Loading state while checking onboarding status
+  if (onboardingComplete === null) {
+    return (
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <View style={{ flex: 1, backgroundColor: '#161410' }} />
+        </SafeAreaProvider>
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
       <SafeAreaProvider>
         <View style={{ flex: 1 }}>
-          <TabNavigator />
-          <HardMomentFAB />
+          {!onboardingComplete ? (
+            <OnboardingScreen onComplete={() => setOnboardingComplete(true)} />
+          ) : (
+            <>
+              <TabNavigator />
+              <HardMomentFAB />
+            </>
+          )}
         </View>
       </SafeAreaProvider>
     </ThemeProvider>

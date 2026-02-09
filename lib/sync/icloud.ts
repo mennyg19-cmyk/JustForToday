@@ -1,11 +1,17 @@
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 
 const DB_FILENAME = 'lifetrack.db';
 const ICLOUD_FOLDER = 'LifeTrackPro';
 const ICLOUD_DB_PATH = `${ICLOUD_FOLDER}/${DB_FILENAME}`;
 
-/** Lazy-load iCloud module so Expo Go doesn't crash (it doesn't include this native module). */
+/** Lazy-load iCloud module so Expo Go and Android don't crash (iOS-only native module). */
 async function getICloudStorage(): Promise<typeof import('@oleg_svetlichnyi/expo-icloud-storage') | null> {
+  // iCloud is iOS-only
+  if (Platform.OS !== 'ios') {
+    return null;
+  }
+
   try {
     return await import('@oleg_svetlichnyi/expo-icloud-storage');
   } catch {

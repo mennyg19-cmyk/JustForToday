@@ -46,7 +46,6 @@ import { getCompactViewMode, setCompactViewMode } from '@/lib/settings/database'
 import { useContacts } from '@/features/hardMoment/hooks/useContacts';
 import {
   getReadings,
-  saveReadings,
   toggleReadingVisibility,
   addReadingFromPicker,
   removeReading,
@@ -117,12 +116,19 @@ export function SettingsScreen() {
   const [pendingContact, setPendingContact] = useState<{ name: string; phone: string } | null>(null);
   const [confirmResetDefaults, setConfirmResetDefaults] = useState(false);
 
+  // -- Story modal --
+  const [showStoryModal, setShowStoryModal] = useState(false);
+
   // -- Grounding Readings --
   const [showReadingsModal, setShowReadingsModal] = useState(false);
   const [readingsList, setReadingsList] = useState<GroundingReading[]>([]);
   const [showAddReadingForm, setShowAddReadingForm] = useState(false);
   const [newReadingTitle, setNewReadingTitle] = useState('');
   const [newReadingSubtitle, setNewReadingSubtitle] = useState('');
+
+  const handleShowStory = useCallback(() => {
+    setShowStoryModal(true);
+  }, []);
 
   const loadReadings = useCallback(async () => {
     const list = await getReadings();
@@ -873,8 +879,29 @@ export function SettingsScreen() {
           </View>
         </View>
 
+        {/* ------------------------------------------------------------ */}
+        {/* App Info                                                     */}
+        {/* ------------------------------------------------------------ */}
         <View className="mb-4">
-          <Text className="text-lg font-bold text-foreground mb-3">About</Text>
+          <Text className="text-lg font-bold text-foreground mb-3">App Info</Text>
+          
+          {/* The Story */}
+          <TouchableOpacity
+            onPress={handleShowStory}
+            activeOpacity={0.7}
+            className={`${cardClass} flex-row items-center gap-3 mb-3`}
+          >
+            <BookOpen size={24} color={iconColors.primary} />
+            <View className="flex-1">
+              <Text className="text-foreground font-semibold">The Story</Text>
+              <Text className="text-xs text-muted-foreground">
+                Why this app exists and how it was built
+              </Text>
+            </View>
+            <ChevronRight size={20} color={iconColors.muted} />
+          </TouchableOpacity>
+
+          {/* Version and Build Info */}
           <View className={`${cardClass}`}>
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-muted-foreground">App Version</Text>
@@ -1327,6 +1354,42 @@ export function SettingsScreen() {
             </ModalButton>
           </ModalButtonRow>
         </ScrollView>
+      </ModalSurface>
+
+      {/* Story Modal */}
+      <ModalSurface
+        visible={showStoryModal}
+        onRequestClose={() => setShowStoryModal(false)}
+        contentClassName="p-6 w-[90%] max-w-md max-h-[80%]"
+      >
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <Text className="text-2xl font-bold text-modal-content-foreground mb-4">
+            Just For Today
+          </Text>
+          <Text className="text-modal-content-foreground/90 text-base leading-7 mb-4">
+            Built by Dan, in and out of recovery since 2014.
+          </Text>
+          <Text className="text-modal-content-foreground/90 text-base leading-7 mb-4">
+            I created this app because existing recovery tools had paywalls and limitations. I needed something honest—a tool that would grow with me, not track me.
+          </Text>
+          <Text className="text-modal-content-foreground/90 text-base leading-7 mb-4">
+            Each feature comes from real advice: my sponsor suggested stoicism, my therapist emphasized "one day at a time," and an old-timer taught me about gratitude.
+          </Text>
+          <Text className="text-modal-content-foreground/90 text-base leading-7 mb-4">
+            This app is about presence, not performance. No nagging notifications. No guilt-inducing streaks. No judgment when you skip a day.
+          </Text>
+          <Text className="text-modal-content-foreground font-semibold text-base leading-7">
+            Just for today. That's enough.
+          </Text>
+        </ScrollView>
+        <ModalButtonRow>
+          <ModalButton
+            variant="primary"
+            onPress={() => setShowStoryModal(false)}
+          >
+            Close
+          </ModalButton>
+        </ModalButtonRow>
       </ModalSurface>
     </SafeAreaView>
   );
