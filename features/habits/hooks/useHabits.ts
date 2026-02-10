@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as habitsDb from '../database';
 import { getHabitsOrder, saveHabitsOrder } from '@/lib/settings';
 import { sortByOrder } from '@/utils/sorting';
-import { triggerSync } from '@/lib/sync';
+import { getTodayKey } from '@/utils/date';
 import type { Habit } from '../types';
+import { logger } from '@/lib/logger';
 
 export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -29,7 +30,7 @@ export function useHabits() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load habits';
       setError(errorMessage);
-      console.error('Failed to load habits:', err);
+      logger.error('Failed to load habits:', err);
     } finally {
       setLoading(false);
     }
@@ -44,11 +45,11 @@ export function useHabits() {
   const toggleHabit = useCallback(
     async (habitId: string, date?: string) => {
       try {
-        const dateKey = date || new Date().toISOString().split('T')[0];
+        const dateKey = date || getTodayKey();
         const updated = await habitsDb.toggleHabitCompletion(habitId, dateKey);
         setHabits((prev) => prev.map((h) => (h.id === habitId ? updated : h)));
       } catch (err) {
-        console.error('Failed to toggle habit:', err);
+        logger.error('Failed to toggle habit:', err);
         throw err;
       }
     },
@@ -62,7 +63,7 @@ export function useHabits() {
         setHabits((prev) => [...prev, newHabit]);
         return newHabit;
       } catch (err) {
-        console.error('Failed to add habit:', err);
+        logger.error('Failed to add habit:', err);
         throw err;
       }
     },
@@ -75,7 +76,7 @@ export function useHabits() {
       setHabits((prev) => prev.filter((h) => h.id !== habitId));
       setOrder((prev) => prev.filter((id) => id !== habitId));
     } catch (err) {
-      console.error('Failed to delete habit:', err);
+      logger.error('Failed to delete habit:', err);
       throw err;
     }
   }, []);
@@ -87,7 +88,7 @@ export function useHabits() {
         setHabits((prev) => prev.map((h) => (h.id === habitId ? updated : h)));
         return updated;
       } catch (err) {
-        console.error('Failed to update habit:', err);
+        logger.error('Failed to update habit:', err);
         throw err;
       }
     },
@@ -105,7 +106,7 @@ export function useHabits() {
       } catch (err) {
         // Revert on error
         await loadHabits();
-        console.error('Failed to reorder habits:', err);
+        logger.error('Failed to reorder habits:', err);
         throw err;
       }
     },

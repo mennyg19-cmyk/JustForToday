@@ -30,7 +30,7 @@ export function PhilosophyStep({ onNext, onSkip }: StepProps) {
         </Text>
 
         <Text className="text-lg text-muted-foreground text-center leading-7">
-          You''ll notice this app is different.
+          You'll notice this app is different.
         </Text>
 
         {/* Principles */}
@@ -54,7 +54,7 @@ export function PhilosophyStep({ onNext, onSkip }: StepProps) {
           </Text>
 
           <Text className="text-lg text-muted-foreground text-center leading-7 pt-2">
-            Show up when you can. That''s enough.
+            Show up when you can. That's enough.
           </Text>
         </View>
       </View>

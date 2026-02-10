@@ -301,7 +301,7 @@ export function GroundingExercise() {
           value={thought}
           onChangeText={setThought}
           placeholder="Anything at all..."
-          placeholderTextColor="#807869"
+          placeholderTextColor={iconColors.muted}
           multiline
           className="bg-input text-input-foreground rounded-xl p-4 min-h-[100px] text-base"
           style={{ textAlignVertical: 'top' }}

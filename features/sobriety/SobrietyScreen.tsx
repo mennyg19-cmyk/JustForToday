@@ -4,13 +4,14 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Edit2, AlertCircle } from 'lucide-react-native';
+import { Plus, Edit2 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { DraggableList, type DraggableItem } from '@/components/DraggableList';
+import { LoadingView } from '@/components/common/LoadingView';
+import { ErrorView } from '@/components/common/ErrorView';
+import { DraggableList } from '@/components/DraggableList';
 import { useSobriety } from './hooks/useSobriety';
 import { AddCounterModal } from './components/AddCounterModal';
 import { CounterDetailModal } from './components/CounterDetailModal';
@@ -66,31 +67,19 @@ export function SobrietyScreen() {
     [updateCounter]
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <LoadingView />;
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Sobriety" rightSlot={<ThemeToggle />} />
-        <View className="flex-1 items-center justify-center px-6">
-          <AlertCircle className="text-destructive mb-4" size={48} />
-          <Text className="text-lg font-bold text-foreground mb-2">
-            Failed to Load Counters
-          </Text>
-          <Text className="text-muted-foreground text-center">{error}</Text>
-        </View>
+        <ErrorView message={error} onRetry={refresh} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Sobriety" rightSlot={<ThemeToggle />} onBackPress={customBack} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 128 }}>
@@ -211,15 +200,15 @@ export function SobrietyScreen() {
       <AddCounterModal
         visible={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSubmit={addCounter}
+        onSubmit={async (...args) => { await addCounter(...args); }}
       />
 
       <CounterDetailModal
         counter={selectedCounter}
         visible={selectedCounter !== null}
         onClose={() => setSelectedCounter(null)}
-        onToggleDay={toggleDay}
-        onResetToNow={resetToNow}
+        onToggleDay={async (...args) => { await toggleDay(...args); }}
+        onResetToNow={async (...args) => { await resetToNow(...args); }}
         onSaveEdit={handleSaveEdit}
       />
     </SafeAreaView>

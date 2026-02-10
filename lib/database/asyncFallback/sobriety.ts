@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SobrietyCounter } from '@/lib/database/schema';
+import { formatDateKey } from '@/utils/date';
 
 const SOBRIETY_KEY = 'lifetrack_sobriety';
 
@@ -13,7 +14,7 @@ function calculateLongestStreak(
   let currentStreak = 0;
 
   for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
-    const dateKey = d.toISOString().split('T')[0];
+    const dateKey = formatDateKey(d);
     const isSober = history[dateKey] !== false;
     if (isSober) {
       currentStreak++;

@@ -9,6 +9,7 @@ import {
   updateFastingSession,
   deleteFastingSession,
 } from '../database';
+import { logger } from '@/lib/logger';
 
 export function useFasting() {
   const [sessions, setSessions] = useState<FastingSession[]>([]);
@@ -26,7 +27,7 @@ export function useFasting() {
       setSessions(allSessions);
       setActiveSession(active);
     } catch (err) {
-      console.error('Failed to load fasting:', err);
+      logger.error('Failed to load fasting:', err);
       setError(err instanceof Error ? err.message : 'Failed to load fasting');
     } finally {
       setLoading(false);

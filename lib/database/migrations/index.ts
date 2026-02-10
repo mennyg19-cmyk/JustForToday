@@ -6,6 +6,7 @@ import * as migration004 from './004_stoic';
 import * as migration005 from './005_habit_tracking_start';
 import * as migration006 from './006_daily_renewal';
 import * as migration007 from './007_checkin_and_contacts';
+import { logger } from '../../logger';
 
 export interface Migration {
   up: (db: SQLiteDatabase) => Promise<void>;
@@ -52,7 +53,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
       "SELECT name FROM sqlite_master WHERE type='table' AND name='daily_checkins'"
     );
     if (!tableExists) {
-      console.warn('Migration 7 was recorded but daily_checkins table missing — re-running');
+      logger.warn('Migration 7 was recorded but daily_checkins table missing — re-running');
       await db.runAsync('DELETE FROM _migrations WHERE version = 7');
       appliedSet.delete(7);
     }
@@ -61,13 +62,13 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   // Run pending migrations
   for (let i = 0; i < migrations.length; i++) {
     if (!appliedSet.has(i + 1)) {
-      console.log(`Running migration ${i + 1}...`);
+      logger.info(`Running migration ${i + 1}...`);
       await migrations[i].up(db);
       await db.runAsync(
-        'INSERT INTO _migrations (version, applied_at) VALUES (?, ?)',
+        'INSERT OR IGNORE INTO _migrations (version, applied_at) VALUES (?, ?)',
         [i + 1, new Date().toISOString()]
       );
-      console.log(`Migration ${i + 1} completed`);
+      logger.info(`Migration ${i + 1} completed`);
     }
   }
 }

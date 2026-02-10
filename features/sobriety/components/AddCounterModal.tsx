@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { ModalSurface } from '@/components/ModalSurface';
 import { useIconColors } from '@/lib/iconTheme';
+import { logger } from '@/lib/logger';
 
 interface AddCounterModalProps {
   visible: boolean;
@@ -40,7 +41,7 @@ function toStartISO(date: Date, hour: string, minute: string): string {
 function MiniCalendar({
   selected,
   onSelect,
-  iconColors,
+  iconColors: _iconColors,
 }: {
   selected: Date;
   onSelect: (d: Date) => void;
@@ -162,7 +163,7 @@ export function AddCounterModal({
       );
       onClose();
     } catch (err) {
-      console.error('Failed to add counter:', err);
+      logger.error('Failed to add counter:', err);
     } finally {
       setSubmitting(false);
     }
@@ -181,10 +182,11 @@ export function AddCounterModal({
       position="bottom"
       animationType="slide"
       contentClassName="p-0 rounded-t-3xl"
+      keyboardAvoid={false}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"

@@ -10,14 +10,16 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppHeader } from '@/components/AppHeader';
+import { useColorScheme } from 'nativewind';
 import { useIconColors } from '@/lib/iconTheme';
 import { getReadings, type GroundingReading } from '@/lib/groundingReadings';
+import { logger } from '@/lib/logger';
 
 /** AsyncStorage key prefix for saving scroll positions. */
 const BOOKMARK_PREFIX = 'lifetrack_reader_bookmark_';
@@ -27,10 +29,13 @@ const SAVE_DEBOUNCE_MS = 1500;
 
 export function ReaderScreen() {
   const params = useLocalSearchParams<{ readingId: string }>();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const iconColors = useIconColors();
 
   const [reading, setReading] = useState<GroundingReading | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [savedScrollY, setSavedScrollY] = useState(0);
 
   const webViewRef = useRef<WebView>(null);
@@ -52,7 +57,7 @@ export function ReaderScreen() {
           }
         }
       } catch (err) {
-        console.error('Failed to load reading:', err);
+        logger.error('Failed to load reading:', err);
       } finally {
         setLoading(false);
       }
@@ -137,9 +142,32 @@ export function ReaderScreen() {
     [handleSavePosition]
   );
 
+  /** Build the correct WebView source based on reading type. */
+  const webViewSource = reading ? { uri: reading.uri } : undefined;
+
+  /** Handle WebView load errors. */
+  const handleError = useCallback(
+    (syntheticEvent: { nativeEvent: { description?: string; code?: number } }) => {
+      const { description } = syntheticEvent.nativeEvent;
+      setError(description || 'Failed to load this reading. Please try again later.');
+    },
+    []
+  );
+
+  /** Handle HTTP errors (e.g. 404, 403). */
+  const handleHttpError = useCallback(
+    (syntheticEvent: { nativeEvent: { statusCode?: number; description?: string } }) => {
+      const { statusCode, description } = syntheticEvent.nativeEvent;
+      setError(
+        `This page returned an error (${statusCode ?? 'unknown'}). ${description || 'The site may be blocking in-app viewing.'}`
+      );
+    },
+    []
+  );
+
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Reader" showBack />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={iconColors.primary} />
@@ -150,7 +178,7 @@ export function ReaderScreen() {
 
   if (!reading) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Reader" showBack />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-foreground text-lg font-bold mb-2">
@@ -165,49 +193,71 @@ export function ReaderScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader
         title={reading.title}
         showBack
       />
-      <WebView
-        ref={webViewRef}
-        source={{ uri: reading.uri }}
-        style={{ flex: 1 }}
-        injectedJavaScript={getInjectedJS()}
-        onMessage={handleMessage}
-        startInLoadingState
-        renderLoading={() => (
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: 'rgba(26, 20, 8, 0.9)',
+      {error ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-foreground text-lg font-bold mb-2">
+            Could not load reading
+          </Text>
+          <Text className="text-muted-foreground text-center text-sm mb-4">
+            {error}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              setError(null);
+              webViewRef.current?.reload();
             }}
+            className="bg-primary rounded-xl py-2.5 px-6"
           >
-            <ActivityIndicator size="large" color={iconColors.primary} />
-            <Text
+            <Text className="text-primary-foreground font-semibold text-sm">Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <WebView
+          ref={webViewRef}
+          source={webViewSource}
+          style={{ flex: 1 }}
+          injectedJavaScript={getInjectedJS()}
+          onMessage={handleMessage}
+          onError={handleError}
+          onHttpError={handleHttpError}
+          startInLoadingState
+          renderLoading={() => (
+            <View
               style={{
-                color: '#C8BEA6',
-                marginTop: 12,
-                fontSize: 14,
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: isDark ? 'rgba(22, 18, 12, 0.9)' : 'rgba(252, 249, 242, 0.9)',
               }}
             >
-              Loading {reading.title}...
-            </Text>
-          </View>
-        )}
-        allowFileAccess
-        allowFileAccessFromFileURLs
-        allowUniversalAccessFromFileURLs
-        originWhitelist={['*']}
-        javaScriptEnabled
-      />
+              <ActivityIndicator size="large" color={iconColors.primary} />
+              <Text
+                style={{
+                  color: iconColors.muted,
+                  marginTop: 12,
+                  fontSize: 14,
+                }}
+              >
+                Loading {reading.title}...
+              </Text>
+            </View>
+          )}
+          allowFileAccess
+          allowFileAccessFromFileURLs
+          allowUniversalAccessFromFileURLs
+          originWhitelist={['*']}
+          javaScriptEnabled
+        />
+      )}
     </SafeAreaView>
   );
 }

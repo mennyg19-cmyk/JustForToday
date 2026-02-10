@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { OnboardingStep } from '../components/OnboardingStep';
 import { CheckCircle, Plus } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
@@ -46,7 +46,6 @@ export function HabitsSetupStep({ onNext, onSkip }: StepProps) {
 
   return (
     <OnboardingStep onNext={onNext} onSkip={onSkip}>
-      <ScrollView showsVerticalScrollIndicator={false}>
         <View className="gap-6">
           {/* Icon */}
           <View className="items-center">
@@ -137,7 +136,6 @@ export function HabitsSetupStep({ onNext, onSkip }: StepProps) {
             You can add, edit, or reorder habits anytime.
           </Text>
         </View>
-      </ScrollView>
     </OnboardingStep>
   );
 }

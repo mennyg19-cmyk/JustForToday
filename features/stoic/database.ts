@@ -1,6 +1,6 @@
 import { getDatabase, isSQLiteAvailable } from '@/lib/database/db';
 import type { StoicEntryRow } from '@/lib/database/schema';
-import { STOIC_DAY_KEYS, STOIC_REVIEW_DAY_KEY } from './handbookData';
+import { triggerSync } from '@/lib/sync';
 import {
   getStoicCurrentWeekNumber,
   getCalendarWeekNumber,
@@ -94,6 +94,7 @@ export async function setStoicEntry(
 ): Promise<void> {
   if (!(await isSQLiteAvailable())) {
     await setStoicEntryAsync(weekNumber, dayKey, content, useful);
+    triggerSync();
     return;
   }
   const db = await getDatabase();
@@ -107,6 +108,7 @@ export async function setStoicEntry(
        updated_at = excluded.updated_at`,
     [weekNumber, dayKey, content, useful ? 1 : 0, now]
   );
+  triggerSync();
 }
 
 const DAY_ORDER: StoicDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'review'];

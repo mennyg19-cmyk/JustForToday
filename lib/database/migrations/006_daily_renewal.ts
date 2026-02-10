@@ -9,6 +9,6 @@ export async function up(db: SQLiteDatabase): Promise<void> {
   `);
 }
 
-export async function down(db: SQLiteDatabase): Promise<void> {
+export async function down(_db: SQLiteDatabase): Promise<void> {
   // SQLite does not support DROP COLUMN easily
 }

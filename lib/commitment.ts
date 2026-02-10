@@ -10,7 +10,6 @@
  */
 
 import type { DailyCheckIn, CommitmentType } from '@/lib/database/schema';
-import { getTodayKey } from '@/utils/date';
 
 // Re-exported so consumers don't need to import from two places
 export type { DailyCheckIn, CommitmentType };

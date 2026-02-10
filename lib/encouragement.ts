@@ -125,3 +125,47 @@ export function getEncouragement(
   const idx = hashString(dateKey + context) % pool.length;
   return personalize(pool[idx], name);
 }
+
+// ---------------------------------------------------------------------------
+// Commitment-aware encouragement for the Hard Moment screen
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a commitment-aware encouragement string.
+ * @param remainingMs  Milliseconds remaining in the commitment, or null/0.
+ * @param name         User's first name for personalization.
+ * @param rotatingIdx  Index into the hardMoment pool for the rotating suffix.
+ */
+export function getCommitmentEncouragement(
+  remainingMs: number | null,
+  name?: string,
+  rotatingIdx?: number
+): string {
+  const pool = MESSAGES.hardMoment;
+  const idx = rotatingIdx ?? 0;
+  const rotating = personalize(pool[idx % pool.length], name);
+
+  if (remainingMs == null || remainingMs <= 0) {
+    // No active commitment — just return the rotating message
+    return rotating;
+  }
+
+  const totalMin = Math.ceil(remainingMs / 60_000);
+  const hours = Math.floor(totalMin / 60);
+  const minutes = totalMin % 60;
+  const timeStr =
+    hours > 0
+      ? `${hours} hour${hours === 1 ? '' : 's'}${minutes > 0 ? ` and ${minutes} minute${minutes === 1 ? '' : 's'}` : ''}`
+      : `${minutes} minute${minutes === 1 ? '' : 's'}`;
+
+  let prefix: string;
+  if (hours >= 6) {
+    prefix = `You've got ${timeStr} left. That's a long stretch \u2014 maybe break it down into smaller chunks? Check back here in an hour.`;
+  } else if (hours >= 2) {
+    prefix = `You've got ${timeStr} to go. You're making real progress.`;
+  } else {
+    prefix = `Only ${timeStr} left. You're almost there \u2014 you can do this.`;
+  }
+
+  return `${prefix}\n\n${rotating}`;
+}

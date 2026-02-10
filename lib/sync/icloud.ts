@@ -1,19 +1,15 @@
-import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { logger } from '@/lib/logger';
 
 const DB_FILENAME = 'lifetrack.db';
 const ICLOUD_FOLDER = 'LifeTrackPro';
 const ICLOUD_DB_PATH = `${ICLOUD_FOLDER}/${DB_FILENAME}`;
 
-/** Lazy-load iCloud module so Expo Go and Android don't crash (iOS-only native module). */
+/** Lazy-load iCloud module so Expo Go doesn't crash (it doesn't include this native module). */
 async function getICloudStorage(): Promise<typeof import('@oleg_svetlichnyi/expo-icloud-storage') | null> {
-  // iCloud is iOS-only
-  if (Platform.OS !== 'ios') {
-    return null;
-  }
-
   try {
-    return await import('@oleg_svetlichnyi/expo-icloud-storage');
+    const mod = await import('@oleg_svetlichnyi/expo-icloud-storage');
+    return mod;
   } catch {
     return null;
   }
@@ -53,7 +49,7 @@ export async function uploadDatabaseToICloud(): Promise<void> {
 
     const available = await ICloudStorage.isAvailable();
     if (!available) {
-      console.log('iCloud not available, skipping upload');
+      logger.info('iCloud not available, skipping upload');
       return;
     }
 
@@ -61,26 +57,26 @@ export async function uploadDatabaseToICloud(): Promise<void> {
 
     const fileInfo = await FileSystem.getInfoAsync(localPath);
     if (!fileInfo.exists) {
-      console.log('Database file does not exist locally');
+      logger.info('Database file does not exist locally');
       return;
     }
 
     try {
       await ICloudStorage.createDirectory(ICLOUD_FOLDER, true);
     } catch (error) {
-      console.log('iCloud folder creation:', error);
+      logger.info('iCloud folder creation:', error);
     }
 
     await ICloudStorage.upload(localPath, ICLOUD_DB_PATH, {
       overwrite: true,
-      onProgress: (progress) => {
-        console.log(`Upload progress: ${(progress.loaded / progress.total) * 100}%`);
+      onProgress: (progress: { loaded: number; total: number }) => {
+        logger.info(`Upload progress: ${(progress.loaded / progress.total) * 100}%`);
       },
     });
 
-    console.log('Database uploaded to iCloud successfully');
+    logger.info('Database uploaded to iCloud successfully');
   } catch (error) {
-    console.error('Failed to upload database to iCloud:', error);
+    logger.error('Failed to upload database to iCloud:', error);
     throw error;
   }
 }
@@ -96,7 +92,7 @@ export async function downloadDatabaseFromICloud(): Promise<boolean> {
 
     const available = await ICloudStorage.isAvailable();
     if (!available) {
-      console.log('iCloud not available, skipping download');
+      logger.info('iCloud not available, skipping download');
       return false;
     }
 
@@ -105,7 +101,7 @@ export async function downloadDatabaseFromICloud(): Promise<boolean> {
     try {
       const cloudFileInfo = await ICloudStorage.getFileInfo(ICLOUD_DB_PATH);
       if (!cloudFileInfo.exists) {
-        console.log('Database file does not exist in iCloud');
+        logger.info('Database file does not exist in iCloud');
         return false;
       }
 
@@ -115,26 +111,26 @@ export async function downloadDatabaseFromICloud(): Promise<boolean> {
         const cloudModTime = cloudFileInfo.modificationTime || 0;
 
         if (cloudModTime <= localModTime) {
-          console.log('Local database is up to date');
+          logger.info('Local database is up to date');
           return false;
         }
       }
 
       await ICloudStorage.download(ICLOUD_DB_PATH, localPath, {
         overwrite: true,
-        onProgress: (progress) => {
-          console.log(`Download progress: ${(progress.loaded / progress.total) * 100}%`);
+        onProgress: (progress: { loaded: number; total: number }) => {
+          logger.info(`Download progress: ${(progress.loaded / progress.total) * 100}%`);
         },
       });
 
-      console.log('Database downloaded from iCloud successfully');
+      logger.info('Database downloaded from iCloud successfully');
       return true;
     } catch (error) {
-      console.error('Failed to download database from iCloud:', error);
+      logger.error('Failed to download database from iCloud:', error);
       return false;
     }
   } catch (error) {
-    console.error('Error checking iCloud for database:', error);
+    logger.error('Error checking iCloud for database:', error);
     return false;
   }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { sortByOrder, extractOrder } from '@/utils/sorting';
+import { sortByOrder } from '@/utils/sorting';
+import { logger } from '@/lib/logger';
 
 export interface UseOrderedListResult<T extends { id: string }> {
   items: T[];
@@ -36,7 +37,7 @@ export function useOrderedList<T extends { id: string }>(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
       setError(errorMessage);
-      console.error('useOrderedList error:', err);
+      logger.error('useOrderedList error:', err);
     } finally {
       setIsLoading(false);
     }

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
@@ -12,14 +11,15 @@ import { Footprints, Pencil, CheckCircle, Flame } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { MetricCard } from '@/components/MetricCard';
+import { LoadingView } from '@/components/common/LoadingView';
+import { ErrorView } from '@/components/common/ErrorView';
+import { CARD as cardClass } from '@/components/cardStyles';
 import { useIconColors } from '@/lib/iconTheme';
 import { formatDateShort, formatDateWithWeekday } from '@/utils/date';
 import { useSteps, type RecentStepsDay } from './hooks/useSteps';
 import { EditStepsModal } from './components/EditStepsModal';
 import { HeatmapGrid } from '@/components/HeatmapGrid';
 import { Link, useRouter, useLocalSearchParams } from 'expo-router';
-
-const cardClass = 'rounded-2xl p-4 bg-card border border-border';
 
 export function StepsScreen() {
   const router = useRouter();
@@ -61,22 +61,13 @@ export function StepsScreen() {
     setShowEditModal(true);
   }, []);
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color={iconColors.primary} />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <LoadingView />;
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Steps" rightSlot={<ThemeToggle />} />
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
-          <Text className="text-muted-foreground text-center">{error}</Text>
-        </View>
+        <ErrorView message={error} onRetry={refresh} />
       </SafeAreaView>
     );
   }
@@ -84,7 +75,7 @@ export function StepsScreen() {
   const progressPct = stepsGoal > 0 ? Math.min(100, (stepsToday / stepsGoal) * 100) : 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Steps" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView

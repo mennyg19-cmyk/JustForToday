@@ -31,7 +31,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Plus, X, Check, CheckCircle, RotateCcw, ChevronLeft } from 'lucide-react-native';
+import { Plus, X, Check, CheckCircle, ChevronLeft } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useCheckIn } from './hooks/useCheckIn';
@@ -41,31 +41,12 @@ import type { CommitmentType, SobrietyCounter, DailyCheckIn } from '@/lib/databa
 import { commitmentLabel, commitmentDurationMs, getCommitmentRemainingMs } from '@/lib/commitment';
 import { useIconColors } from '@/lib/iconTheme';
 import { getTodayKey } from '@/utils/date';
+import { logger } from '@/lib/logger';
 
-/** AsyncStorage key for committed counter names — read by the home screen card. */
-const COMMITTED_KEY_PREFIX = 'lifetrack_committed_';
+import type { ChallengePair } from './types';
+import { COMMITTED_KEY_PREFIX, DRAFT_KEY_PAIRS } from './types';
+export type { CommittedCounterInfo } from './types';
 
-// -- Draft persistence keys --
-const DRAFT_KEY_PAIRS = 'lifetrack_checkin_draft_pairs';
-
-/** A single challenge/plan pair used in the reflection step. */
-interface ChallengePair {
-  challenge: string;
-  plan: string;
-}
-
-/**
- * Per-counter commitment details saved to AsyncStorage.
- * Shared by the home-screen card and the Daily Renewal screen so both
- * display the same commitment data (single source of truth).
- */
-export interface CommittedCounterInfo {
-  id: string;
-  name: string;
-  duration: CommitmentType;
-}
-
-// The steps of the check-in flow
 type FlowStep = 'commitment' | 'reflection' | 'done';
 
 export function CheckInFlow() {
@@ -223,7 +204,7 @@ export function CheckInFlow() {
             try {
               await renewDailyCommitment(c.id);
             } catch (e) {
-              console.warn('renewDailyCommitment failed for', c.id, e);
+              logger.warn('renewDailyCommitment failed for', c.id, e);
             }
           }
         }
@@ -238,7 +219,7 @@ export function CheckInFlow() {
       await clearDraft();
       router.replace('/');
     } catch (err) {
-      console.error('Failed to save check-in:', err);
+      logger.error('Failed to save check-in:', err);
       setSaving(false);
       Alert.alert('Could not save', 'Something went wrong. Please try again.', [{ text: 'OK' }]);
     }
@@ -272,7 +253,7 @@ export function CheckInFlow() {
   // Loading — wait for check-in data before rendering
   if (checkInLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Check In" rightSlot={<ThemeToggle />} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" />
@@ -284,7 +265,7 @@ export function CheckInFlow() {
   // Already checked in today — show current commitment with option to reset
   if (hasCheckedIn && todayCheckIn) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Check In" rightSlot={<ThemeToggle />} />
         <AlreadyCheckedInView
           checkIn={todayCheckIn}
@@ -296,7 +277,7 @@ export function CheckInFlow() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Check In" rightSlot={<ThemeToggle />} />
 
       <KeyboardAvoidingView
@@ -320,7 +301,6 @@ export function CheckInFlow() {
             counters.length === 0 ? (
               <NoCountersStep
                 onGoToSobriety={() => router.push('/sobriety?from=checkin')}
-                onCancel={handleCancel}
               />
             ) : counters.length === 1 ? (
               <SingleCommitmentStep
@@ -533,10 +513,8 @@ function AlreadyCheckedInView({
 
 function NoCountersStep({
   onGoToSobriety,
-  onCancel,
 }: {
   onGoToSobriety: () => void;
-  onCancel: () => void;
 }) {
   return (
     <View className="gap-6 mt-8 items-center">
@@ -570,7 +548,10 @@ function formatExpiryTime(type: CommitmentType): string {
   const durationMs = commitmentDurationMs(type);
   if (durationMs == null) return '';
   const expiry = new Date(Date.now() + durationMs);
-  const isToday = expiry.getDate() === new Date().getDate();
+  const now = new Date();
+  const isToday = expiry.getDate() === now.getDate() &&
+    expiry.getMonth() === now.getMonth() &&
+    expiry.getFullYear() === now.getFullYear();
   const time = expiry.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return isToday ? `today at ${time}` : `tomorrow at ${time}`;
 }
@@ -642,7 +623,7 @@ function SingleCommitmentStep({
           activeOpacity={0.7}
           className="flex-row items-center gap-1 self-start"
         >
-          <ChevronLeft size={16} color="#807869" />
+          <ChevronLeft size={16} className="text-muted-foreground" />
           <Text className="text-muted-foreground text-sm font-medium">Back to 24h</Text>
         </TouchableOpacity>
 
@@ -790,7 +771,7 @@ function MultiCommitmentStep({
         activeOpacity={0.7}
         className="flex-row items-center gap-1 self-start"
       >
-        <ChevronLeft size={16} color="#807869" />
+        <ChevronLeft size={16} color={iconColors.muted} />
         <Text className="text-muted-foreground text-sm font-medium">Back to 24h</Text>
       </TouchableOpacity>
 
@@ -889,7 +870,7 @@ function ReflectionStep({
               value={pair.challenge}
               onChangeText={(t) => onUpdatePair(index, 'challenge', t)}
               placeholder="e.g. a stressful meeting, loneliness, boredom..."
-              placeholderTextColor="#807869"
+              placeholderTextColor={iconColors.muted}
               multiline
               className="bg-input text-input-foreground rounded-xl p-4 min-h-[80px] text-base"
               style={{ textAlignVertical: 'top' }}
@@ -904,7 +885,7 @@ function ReflectionStep({
               value={pair.plan}
               onChangeText={(t) => onUpdatePair(index, 'plan', t)}
               placeholder="e.g. call my sponsor, take a walk, breathe..."
-              placeholderTextColor="#807869"
+              placeholderTextColor={iconColors.muted}
               multiline
               className="bg-input text-input-foreground rounded-xl p-4 min-h-[80px] text-base"
               style={{ textAlignVertical: 'top' }}

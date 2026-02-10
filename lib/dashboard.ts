@@ -5,7 +5,7 @@ import { getGratitudeEntries } from '@/features/gratitude/database';
 import { getFastingHoursToday } from '@/features/fasting/database';
 import { getTodayStepsCount, getWorkoutsForDate } from '@/features/steps/database';
 import { getStoicTodayReflectionDone } from '@/features/stoic/database';
-import { getTodayKey } from '@/utils/date';
+import { getTodayKey, isToday, daysSince } from '@/utils/date';
 import { getGoals } from '@/lib/settings';
 
 export interface DashboardData {
@@ -32,24 +32,6 @@ export interface DashboardData {
   dailyRenewalCountdown: string;
   /** Number of addictions with an active (non-expired) 24h renewal. */
   dailyRenewalRenewed: number;
-}
-
-function daysSince(startDate: string): number {
-  const start = new Date(startDate);
-  const now = new Date();
-  return Math.floor(
-    (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-  );
-}
-
-function isToday(isoDate: string): boolean {
-  const d = new Date(isoDate);
-  const today = new Date();
-  return (
-    d.getUTCFullYear() === today.getUTCFullYear() &&
-    d.getUTCMonth() === today.getUTCMonth() &&
-    d.getUTCDate() === today.getUTCDate()
-  );
 }
 
 export async function getDashboardData(): Promise<DashboardData> {

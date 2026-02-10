@@ -73,7 +73,8 @@ export const HabitCalendar = memo(function HabitCalendar({
       onRequestClose={onClose}
       position="bottom"
       animationType="slide"
-      contentClassName="rounded-t-3xl p-6 max-h-[80%]"
+      contentClassName="rounded-t-3xl p-6"
+      noScroll
     >
       <View className="flex-row items-center justify-between mb-4">
         <View className="flex-1">
@@ -95,7 +96,7 @@ export const HabitCalendar = memo(function HabitCalendar({
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: 24 }}>
         {editMode ? (
           showDatePicker ? (
             <View className="mb-4">

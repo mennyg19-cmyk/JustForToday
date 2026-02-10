@@ -6,16 +6,19 @@
  * to /hard-moment without disrupting the current screen.
  */
 
-import { useEffect, useState } from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { View, TouchableOpacity, Text, Animated, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Home, Settings, Heart } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { initializeSync } from '@/lib/sync';
-import { ensureFirstLaunchInitialized, hasCompletedOnboarding } from '@/lib/settings/database';
+import { ensureFirstLaunchInitialized, getOnboardingCompleted } from '@/lib/settings/database';
 import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
+import { logger } from '@/lib/logger';
 import '@/global.css';
 
 function TabNavigator() {
@@ -23,13 +26,8 @@ function TabNavigator() {
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
-    // First launch: set all module tracking start dates to today
-    ensureFirstLaunchInitialized().catch((err) => {
-      console.error('First launch init failed:', err);
-    });
-    // Initialize iCloud sync on app start (iOS only)
     initializeSync().catch((err) => {
-      console.error('Failed to initialize sync:', err);
+      logger.error('Failed to initialize sync:', err);
     });
   }, []);
 
@@ -42,12 +40,26 @@ function TabNavigator() {
         tabBarInactiveTintColor: isDark ? '#807060' : '#A09080',
         tabBarStyle: {
           backgroundColor: isDark ? '#1A1408' : '#FFFDF7',
-          borderTopColor: isDark ? '#41382A' : '#E6DECD',
-          borderTopWidth: 1,
+          borderTopWidth: 0,
+          // Elevated tab bar with subtle shadow
+          ...(Platform.OS === 'ios'
+            ? {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -3 },
+                shadowOpacity: isDark ? 0.15 : 0.06,
+                shadowRadius: 12,
+              }
+            : { elevation: 8 }),
+          paddingTop: 4,
         },
         tabBarLabelStyle: {
           color: isDark ? '#C8BEA6' : '#4A3E28',
-          fontSize: 12,
+          fontSize: 11,
+          fontWeight: '600',
+          letterSpacing: 0.3,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
       }}
     >
@@ -89,7 +101,11 @@ function TabNavigator() {
       />
       <Tabs.Screen
         name="inventory"
-        options={{ href: null, title: 'Inventory' }}
+        options={{ href: null, title: 'Step 10' }}
+      />
+      <Tabs.Screen
+        name="step11"
+        options={{ href: null, title: 'Step 11' }}
       />
       <Tabs.Screen
         name="steps"
@@ -132,87 +148,133 @@ function HardMomentFAB() {
   const pathname = usePathname();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   // Don't show the FAB when already on the hard moment screen
   if (pathname === '/hard-moment') return null;
 
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.93,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 4,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <View
+    <Animated.View
       style={{
         position: 'absolute',
-        bottom: 72, // above the tab bar
-        right: 20,
+        bottom: 90,
+        right: 16,
         zIndex: 100,
+        transform: [{ scale: scaleAnim }],
       }}
     >
       <TouchableOpacity
         onPress={() => router.push('/hard-moment')}
-        activeOpacity={0.8}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
         style={{
           backgroundColor: isDark ? '#3A3020' : '#F5EDD8',
           borderColor: isDark ? '#5A4A30' : '#E0D4B0',
           borderWidth: 1,
-          borderRadius: 28,
-          paddingHorizontal: 16,
-          paddingVertical: 10,
+          borderRadius: 24,
+          paddingHorizontal: 18,
+          paddingVertical: 11,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 6,
-          // Subtle shadow
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.15,
-          shadowRadius: 4,
-          elevation: 3,
+          gap: 7,
+          // Premium shadow
+          shadowColor: isDark ? '#000' : '#8A7030',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: isDark ? 0.3 : 0.15,
+          shadowRadius: 8,
+          elevation: 6,
         }}
       >
-        <Heart size={16} color={isDark ? '#D4B26A' : '#B48C3C'} />
-        <Text style={{ color: isDark ? '#D4B26A' : '#8A7030', fontSize: 13, fontWeight: '600' }}>
+        <Heart size={15} color={isDark ? '#D4B26A' : '#B48C3C'} />
+        <Text
+          style={{
+            color: isDark ? '#D4B26A' : '#8A7030',
+            fontSize: 13,
+            fontWeight: '600',
+            letterSpacing: 0.3,
+          }}
+        >
           Hard moment
         </Text>
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 }
 
 export default function RootLayout() {
-  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if onboarding has been completed on app launch
-    hasCompletedOnboarding()
-      .then((completed) => setOnboardingComplete(completed))
-      .catch((err) => {
-        console.error('Failed to check onboarding status:', err);
-        setOnboardingComplete(true); // Default to showing app if check fails
-      });
+    async function init() {
+      try {
+        // Run critical init first — sets module tracking dates, etc.
+        await ensureFirstLaunchInitialized();
+      } catch (err) {
+        logger.error('First launch init failed:', err);
+      }
+      // Only check onboarding after init completes
+      const completed = await getOnboardingCompleted();
+      setShowOnboarding(!completed);
+    }
+    init();
   }, []);
 
-  // Loading state while checking onboarding status
-  if (onboardingComplete === null) {
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false);
+  }, []);
+
+  // Still loading onboarding state — render nothing to avoid flash
+  if (showOnboarding === null) {
     return (
       <ThemeProvider>
         <SafeAreaProvider>
-          <View style={{ flex: 1, backgroundColor: '#161410' }} />
+          <StatusBar style="auto" />
+          <View style={{ flex: 1 }} />
         </SafeAreaProvider>
       </ThemeProvider>
     );
   }
 
+  if (showOnboarding) {
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <SafeAreaProvider>
+            <StatusBar style="auto" />
+            <OnboardingScreen onComplete={handleOnboardingComplete} />
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <View style={{ flex: 1 }}>
-          {!onboardingComplete ? (
-            <OnboardingScreen onComplete={() => setOnboardingComplete(true)} />
-          ) : (
-            <>
-              <TabNavigator />
-              <HardMomentFAB />
-            </>
-          )}
-        </View>
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <StatusBar style="auto" />
+          <View style={{ flex: 1 }}>
+            <TabNavigator />
+            <HardMomentFAB />
+          </View>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

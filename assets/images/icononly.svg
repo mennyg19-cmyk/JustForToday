@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F2027"/>
+      <stop offset="50%" style="stop-color:#1A3A4A"/>
+      <stop offset="100%" style="stop-color:#0F2027"/>
+    </linearGradient>
+    <linearGradient id="leafLeft" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#34D399"/>
+    </linearGradient>
+    <linearGradient id="leafRight" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#10B981"/>
+      <stop offset="100%" style="stop-color:#6EE7B7"/>
+    </linearGradient>
+    <linearGradient id="stemGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#34D399"/>
+    </linearGradient>
+    <filter id="leafGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="18" flood-color="#10B981" flood-opacity="0.4"/>
+    </filter>
+    <filter id="dotGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Subtle radial ambient light -->
+    <radialGradient id="ambientLight" cx="50%" cy="42%" r="50%">
+      <stop offset="0%" style="stop-color:#34D399; stop-opacity:0.08"/>
+      <stop offset="100%" style="stop-color:#0F2027; stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#bgGrad)"/>
+
+  <!-- Ambient glow behind icon -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#ambientLight)"/>
+
+  <!-- Main graphic centered -->
+  <g transform="translate(512, 440)">
+
+    <!-- Stem -->
+    <path d="M0,140 C0,80 0,40 0,-20"
+          stroke="url(#stemGrad)" stroke-width="10" fill="none" stroke-linecap="round"/>
+
+    <!-- Left leaf -->
+    <g filter="url(#leafGlow)">
+      <path d="M-6,10 C-30,-30 -100,-80 -110,-180
+               C-60,-175 -10,-130 6,-40 Z"
+            fill="url(#leafLeft)"/>
+      <!-- Vein -->
+      <path d="M-2,0 C-20,-40 -60,-100 -90,-155"
+            stroke="#0F2027" stroke-opacity="0.12" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Right leaf (slightly larger for asymmetry) -->
+    <g filter="url(#leafGlow)">
+      <path d="M6,-5 C35,-50 115,-110 125,-220
+               C70,-210 15,-150 -6,-50 Z"
+            fill="url(#leafRight)"/>
+      <!-- Vein -->
+      <path d="M2,-15 C30,-60 75,-130 105,-190"
+            stroke="#0F2027" stroke-opacity="0.12" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Progress dots — ascending arc -->
+    <g filter="url(#dotGlow)">
+      <circle cx="-130" cy="170" r="10" fill="#34D399" opacity="0.25"/>
+      <circle cx="-90"  cy="148" r="12" fill="#34D399" opacity="0.35"/>
+      <circle cx="-48"  cy="130" r="14" fill="#34D399" opacity="0.48"/>
+      <circle cx="-4"   cy="118" r="16" fill="#6EE7B7" opacity="0.62"/>
+      <circle cx="44"   cy="112" r="18" fill="#6EE7B7" opacity="0.78"/>
+      <circle cx="96"   cy="110" r="20" fill="#A7F3D0" opacity="0.9"/>
+      <circle cx="150"  cy="112" r="22" fill="#D1FAE5" opacity="1"/>
+    </g>
+
+  </g>
+</svg>

@@ -155,7 +155,7 @@ export async function getDailyScoresForLastDays(days: number): Promise<DayScore[
     if (visibility.fasting && count('fasting') && isDateInTrackingRange(dateKey, 'fasting', moduleSettings)) parts.push(fastingPct);
     if (visibility.workouts && count('workouts') && isDateInTrackingRange(dateKey, 'workouts', moduleSettings)) parts.push(workoutsPct);
     if (visibility.sobriety && count('sobriety') && isDateInTrackingRange(dateKey, 'sobriety', moduleSettings)) parts.push(sobrietyPct);
-    if (visibility.stoic && count('stoic') && isDateInTrackingRange(dateKey, 'stoic', moduleSettings) && stoicDone) parts.push(stoicPct);
+    if (visibility.stoic && count('stoic') && isDateInTrackingRange(dateKey, 'stoic', moduleSettings)) parts.push(stoicPct);
 
     const beforeTrackingStart =
       earliestStart != null && dateKey < earliestStart;

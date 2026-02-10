@@ -4,7 +4,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { DailyCheckIn, CommitmentType } from '@/lib/database/schema';
+import type { DailyCheckIn } from '@/lib/database/schema';
 
 const PREFIX = 'lifetrack_';
 const KEY = PREFIX + 'daily_checkins';

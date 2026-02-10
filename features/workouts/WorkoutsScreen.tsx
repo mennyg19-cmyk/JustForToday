@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
@@ -14,14 +13,15 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { MetricCard } from '@/components/MetricCard';
 import { ModalButton, ModalButtonRow } from '@/components/ModalContent';
 import { ModalSurface } from '@/components/ModalSurface';
+import { LoadingView } from '@/components/common/LoadingView';
+import { ErrorView } from '@/components/common/ErrorView';
+import { CARD_MB as cardClass } from '@/components/cardStyles';
 import { useIconColors } from '@/lib/iconTheme';
 import { formatDateWithWeekday } from '@/utils/date';
 import { useSteps } from '@/features/steps/hooks/useSteps';
 import { AddWorkoutModal } from '@/features/steps/components/AddWorkoutModal';
 import type { Workout } from '@/lib/database/schema';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-const cardClass = 'rounded-2xl p-4 bg-card border border-border mb-4';
 
 export function WorkoutsScreen() {
   const router = useRouter();
@@ -66,22 +66,13 @@ export function WorkoutsScreen() {
     [removeWorkout]
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color={iconColors.primary} />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <LoadingView />;
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Workouts" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
-          <Text className="text-muted-foreground text-center">{error}</Text>
-        </View>
+        <ErrorView message={error} onRetry={refresh} />
       </SafeAreaView>
     );
   }
@@ -89,7 +80,7 @@ export function WorkoutsScreen() {
   const totalCaloriesToday = workoutsToday.reduce((s, w) => s + w.caloriesBurned, 0);
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Workouts" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView

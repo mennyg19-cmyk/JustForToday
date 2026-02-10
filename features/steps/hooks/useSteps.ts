@@ -15,6 +15,7 @@ import { getGoals } from '@/lib/settings';
 import { getTodayKey, getDateKeysForLastDays } from '@/utils/date';
 import type { Workout } from '@/lib/database/schema';
 import * as HealthKit from '@/lib/healthKit';
+import { logger } from '@/lib/logger';
 
 const RECENT_DAYS = 7;
 const HEATMAP_DAYS = 14 * 7; // 98 days ~ 3 months
@@ -140,7 +141,7 @@ export function useSteps() {
         setActiveCaloriesSource(null);
       }
     } catch (err) {
-      console.error('Failed to load steps:', err);
+      logger.error('Failed to load steps:', err);
       setError(err instanceof Error ? err.message : 'Failed to load steps');
     } finally {
       setLoading(false);
@@ -238,7 +239,7 @@ export function useSteps() {
         }
         await refresh();
       } catch (err) {
-        console.error('HealthKit sync failed:', err);
+        logger.error('HealthKit sync failed:', err);
         const msg = err instanceof Error ? err.message : 'Sync failed';
         if (onSyncFailed) onSyncFailed(msg);
         else setError(msg);

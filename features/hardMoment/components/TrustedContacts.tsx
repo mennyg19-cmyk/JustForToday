@@ -9,14 +9,15 @@
  * The user assigns a label (Sponsor, Friend, Family, or custom text).
  */
 
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Alert, Linking } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { Phone, UserPlus, X } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
 import { useContacts } from '../hooks/useContacts';
 import { ModalSurface } from '@/components/ModalSurface';
 import { ModalButtonRow, ModalButton } from '@/components/ModalContent';
 import type { TrustedContact } from '@/lib/database/schema';
+import { logger } from '@/lib/logger';
 
 // Pre-defined label suggestions (user can also type custom)
 const LABEL_SUGGESTIONS = ['Sponsor', 'Friend', 'Family', 'Therapist', 'Other'];
@@ -26,27 +27,35 @@ export function TrustedContacts() {
   const iconColors = useIconColors();
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [pendingContact, setPendingContact] = useState<{ name: string; phone: string } | null>(null);
+  const pendingRef = useRef<{ name: string; phone: string } | null>(null);
+
+  // When pendingContact is set after picker returns, show modal on next tick
+  useEffect(() => {
+    if (!pendingContact || showLabelModal) return;
+    const timer = setTimeout(() => setShowLabelModal(true), 500);
+    return () => clearTimeout(timer);
+  }, [pendingContact, showLabelModal]);
 
   /** Open the device contact picker, then show a label selection modal. */
   const handleAddContact = useCallback(async () => {
     try {
-      // Dynamically import expo-contacts to avoid crash if not installed yet
       const Contacts = await import('expo-contacts');
 
-      const { status } = await Contacts.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Contacts access needed',
-          'To add a trusted contact, allow access to your contacts in Settings.'
-        );
-        return;
+      // On iOS, the native contact picker doesn't need address book permissions
+      if (Platform.OS !== 'ios') {
+        const { status } = await Contacts.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Contacts access needed',
+            'To add a trusted contact, allow access to your contacts in Settings.'
+          );
+          return;
+        }
       }
 
-      // Open the system contact picker
       const contact = await Contacts.presentContactPickerAsync();
-      if (!contact) return; // user cancelled
+      if (!contact) return;
 
-      // Extract the first phone number
       const phone = contact.phoneNumbers?.[0]?.number;
       if (!phone) {
         Alert.alert('No phone number', 'This contact doesn\u2019t have a phone number.');
@@ -54,13 +63,26 @@ export function TrustedContacts() {
       }
 
       const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unknown';
+
+      // Check for duplicate phone number
+      const cleanPhone = phone.replace(/[^+\d]/g, '');
+      const isDuplicate = contacts.some(
+        (c) => c.phone.replace(/[^+\d]/g, '') === cleanPhone
+      );
+      if (isDuplicate) {
+        Alert.alert('Already Added', `${name} is already in your trusted contacts.`);
+        return;
+      }
+
+      // Store in ref immediately, then set state — the useEffect above
+      // will show the modal once the component re-renders
+      pendingRef.current = { name, phone };
       setPendingContact({ name, phone });
-      setShowLabelModal(true);
     } catch (err) {
-      console.error('Contact picker error:', err);
-      Alert.alert('Error', 'Could not open contacts. Make sure expo-contacts is installed.');
+      logger.error('Contact picker error:', err);
+      Alert.alert('Error', 'Could not open contacts.');
     }
-  }, []);
+  }, [contacts]);
 
   /** Save the pending contact with the chosen label. */
   const handleSaveWithLabel = useCallback(
@@ -74,7 +96,10 @@ export function TrustedContacts() {
         phone: pendingContact.phone,
       };
 
-      await addContact(contact);
+      const saved = await addContact(contact);
+      if (!saved) {
+        Alert.alert('Could Not Save', 'Failed to save this contact. You may have reached the maximum of 5.');
+      }
       setPendingContact(null);
       setShowLabelModal(false);
     },

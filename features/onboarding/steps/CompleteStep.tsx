@@ -38,17 +38,14 @@ export function CompleteStep({ onNext }: StepProps) {
           </Text>
 
           <Text className="text-xl text-foreground font-medium text-center leading-8 px-4 pt-4">
-            Show up when you can.{'{\\n}'}That's enough.
+            Show up when you can.{'\n'}That's enough.
           </Text>
         </View>
 
         {/* Attribution */}
         <View className="pt-12">
           <Text className="text-sm text-muted-foreground text-center italic">
-            Built with care by Dan
-          </Text>
-          <Text className="text-xs text-muted-foreground text-center italic pt-1">
-            In and out of recovery since 2014
+            Built by Menny, baked by Daniel
           </Text>
         </View>
 

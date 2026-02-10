@@ -1,14 +1,15 @@
-import { CheckCircle, Target, Calendar, Clock, Footprints, Dumbbell, Heart, BookOpen, RotateCcw } from 'lucide-react-native';
+import { CheckCircle, Target, Calendar, Clock, Footprints, Dumbbell, Heart, BookOpen, RotateCcw, ClipboardList } from 'lucide-react-native';
 import type { DashboardData } from './dashboard';
 import { formatCompact, formatStepsLeft } from '@/utils/format';
 
 /** Card id -> image source for full (expanded) dashboard cards. Static require for Metro. */
 export const CARD_IMAGES: Record<string, number> = {
-  habits: require('@/assets/images/habits.png'),
+  habits: require('@/assets/images/habits.jpg'),
   daily_renewal: require('@/assets/images/timer.jpeg'),
-  sobriety: require('@/assets/images/sobriety.png'),
+  sobriety: require('@/assets/images/sobriety.jpg'),
   fasting: require('@/assets/images/fasting.jpeg'),
-  inventory: require('@/assets/images/inventory.png'),
+  inventory: require('@/assets/images/step11.jpg'),
+  step10: require('@/assets/images/inventory.jpg'),
   steps: require('@/assets/images/steps.jpeg'),
   workouts: require('@/assets/images/workout.jpeg'),
   gratitude: require('@/assets/images/gratitude.jpeg'),
@@ -38,7 +39,7 @@ export type CardConfig = {
  * All cards use flat muted colors — no gradients, no bright tones.
  * Badge colors use the primary brass/amber with low opacity.
  */
-export const getCardConfigs = (dailyProgress: DashboardData): Record<string, CardConfig> => ({
+export const getCardConfigs = (_dailyProgress: DashboardData): Record<string, CardConfig> => ({
   habits: {
     id: 'habits',
     title: 'Habits',
@@ -111,10 +112,28 @@ export const getCardConfigs = (dailyProgress: DashboardData): Record<string, Car
         ? `${formatCompact(data.fastingHours)}/${formatCompact(data.fastingHoursGoal)}h`
         : `${formatCompact(data.fastingHours)}h`,
   },
+  step10: {
+    id: 'step10',
+    title: 'Step 10',
+    href: '/inventory',
+    icon: ClipboardList,
+    bannerColorDark: '#1A2014',
+    bannerColorLight: '#EEF2E4',
+    iconColorLight: '#6A7A40',
+    badgeColorLight: 'bg-primary/20',
+    textColorLight: 'text-primary',
+    badgeColorDark: 'bg-primary/15',
+    textColorDark: 'text-primary',
+    getSubtitle: (data) => {
+      if (data.inventoryCount === 0) return 'Not started';
+      return 'Spot-check inventory';
+    },
+    getBadgeText: (data) => formatCompact(data.inventoryCount),
+  },
   inventory: {
     id: 'inventory',
-    title: 'Inventory',
-    href: '/inventory',
+    title: 'Step 11',
+    href: '/step11',
     icon: Calendar,
     bannerColorDark: '#1A2014',
     bannerColorLight: '#EEF2E4',

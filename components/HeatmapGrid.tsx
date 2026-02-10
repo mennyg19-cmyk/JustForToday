@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, useWindowDimensions, TouchableOpacity } from 'react-native';
 import { useColorScheme } from 'nativewind';
-import { getTodayKey } from '@/utils/date';
+import { getTodayKey, formatDateKey } from '@/utils/date';
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const GAP = 2;
@@ -175,7 +175,7 @@ export function HeatmapGrid({
       for (let col = 0; col < weeks; col++) {
         const d = new Date(startSunday);
         d.setDate(startSunday.getDate() + col * 7 + row);
-        const dateKey = d.toISOString().split('T')[0];
+        const dateKey = formatDateKey(d);
         const score = scoreByDate.get(dateKey) ?? 0;
         r.push({ dateKey, score });
       }
@@ -248,7 +248,7 @@ export function HeatmapGrid({
       const dayIndex = row * 7 + col;
       const d = new Date();
       d.setDate(d.getDate() - (totalDays - 1 - dayIndex));
-      const dateKey = d.toISOString().split('T')[0];
+      const dateKey = formatDateKey(d);
       const score = scoreByDate.get(dateKey) ?? 0;
       r.push({ dateKey, score });
     }

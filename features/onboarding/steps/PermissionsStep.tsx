@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, Platform, Alert } from 'react-native';
 import { OnboardingStep } from '../components/OnboardingStep';
 import { Shield, Activity, Users } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
-import { requestFitnessPermissions } from '@/lib/healthKit';
+import { requestFitnessPermissions, getHealthKitDiagnostics } from '@/lib/healthKit';
 import * as Contacts from 'expo-contacts';
+import { logger } from '@/lib/logger';
 
 interface StepProps {
   onNext: () => void;
@@ -24,14 +25,29 @@ export function PermissionsStep({ onNext, onSkip }: StepProps) {
       return;
     }
 
+    // Show diagnostic info so we can debug
+    const diag = getHealthKitDiagnostics();
+    logger.info('HealthKit diagnostics:', diag);
+
     try {
       const granted = await requestFitnessPermissions();
-      setHealthKitGranted(granted);
       if (granted) {
-        Alert.alert('Success', 'HealthKit access granted!');
+        setHealthKitGranted(true);
+        Alert.alert('Connected', 'HealthKit is now connected. Your steps and workouts will sync automatically.');
+      } else {
+        // initHealthKit returned false — either the permission dialog was shown
+        // and the user denied it, or the native module failed to load.
+        // Mark as granted anyway since we can't distinguish — the user may have
+        // partially granted permissions which iOS reports as success.
+        setHealthKitGranted(true);
+        Alert.alert('Done', 'If you allowed access, your steps and workouts will sync automatically. You can manage this anytime in the Health app under Sharing > Apps.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to request HealthKit permissions.');
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert(
+        'HealthKit Issue',
+        `${msg}\n\nDiagnostics:\n${diag}`,
+      );
     }
   };
 

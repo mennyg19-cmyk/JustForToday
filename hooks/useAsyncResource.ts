@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, DependencyList } from 'react';
+import { logger } from '@/lib/logger';
 
 export interface UseAsyncResourceResult<T> {
   data: T | null;
@@ -27,7 +28,7 @@ export function useAsyncResource<T>(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
-      console.error('useAsyncResource error:', err);
+      logger.error('useAsyncResource error:', err);
     } finally {
       setLoading(false);
     }

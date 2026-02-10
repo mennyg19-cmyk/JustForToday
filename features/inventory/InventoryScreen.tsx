@@ -1,3 +1,11 @@
+/**
+ * InventoryScreen — Step 10 personal inventory.
+ *
+ * Two sub-tabs:
+ *   - Resentment (the existing Step 10 form)
+ *   - Fear (coming soon)
+ */
+
 import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
@@ -6,13 +14,17 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import { Copy, HelpCircle, Pencil, Trash2 } from 'lucide-react-native';
+import { Copy, HelpCircle, Pencil, Trash2, Clock } from 'lucide-react-native';
+import { usePrivacyLock } from '@/hooks/usePrivacyLock';
+import { SavedSection } from './components/SavedSection';
+import { emptyPayload } from './helpers';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LoadingView } from '@/components/common/LoadingView';
+import { ErrorView } from '@/components/common/ErrorView';
 import { useIconColors } from '@/lib/iconTheme';
 import {
   ModalLabel,
@@ -26,65 +38,20 @@ import { HelperModal } from './components/HelperModal';
 import { BigBookPassageView } from './components/BigBookPassage';
 import { getPassage } from './bigBook';
 import type { InventoryEntry } from '@/lib/database/schema';
-import type { MorningInventoryData, NightlyInventoryData } from './types';
-import type { HelperType } from '@/lib/step10Data';
-import {
-  AFFECTS,
-  DEFECTS,
-  ASSETS,
-  DEFECT_TO_ASSET,
-} from '@/lib/step10Data';
+import type { HelperType } from './step10Data';
+import { AFFECTS, DEFECTS, ASSETS, DEFECT_TO_ASSET } from './step10Data';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-type Tab = 'morning' | 'nightly' | 'step10';
-
-function isToday(isoDate: string): boolean {
-  const d = new Date(isoDate);
-  const today = new Date();
-  return (
-    d.getUTCFullYear() === today.getUTCFullYear() &&
-    d.getUTCMonth() === today.getUTCMonth() &&
-    d.getUTCDate() === today.getUTCDate()
-  );
-}
-
-function parseMorningNotes(notes: string | undefined): MorningInventoryData {
-  if (!notes?.trim()) return {};
-  try {
-    const parsed = JSON.parse(notes) as MorningInventoryData;
-    if (typeof parsed === 'object' && parsed !== null) return parsed;
-  } catch {
-    // Legacy: plain string = askFor
-  }
-  return { askFor: notes };
-}
-
-const emptyStep10Payload = (type: Tab): Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'> => ({
-  type,
-  who: '',
-  whatHappened: '',
-  affects: [],
-  defects: [],
-  assets: [],
-  seventhStepPrayer: '', // required by schema; only used for step10
-  prayed: false,
-  amendsNeeded: false,
-  amendsTo: '',
-  helpWho: '',
-  shareWith: '',
-  notes: undefined,
-});
+type Tab = 'resentment' | 'fear';
 
 export function InventoryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ from?: string }>();
   const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
   const scrollRef = useRef<ScrollView | null>(null);
+  const privacyLock = usePrivacyLock();
   const {
-    entries,
     step10Entries,
-    morningEntries,
-    nightlyEntries,
     loading,
     error,
     refresh,
@@ -101,45 +68,9 @@ export function InventoryScreen() {
     [iconColors.muted, iconColors.primary, iconColors.primaryForeground]
   );
 
-  const morningEntryToday = useMemo(
-    () => morningEntries.find((e) => isToday(e.createdAt)),
-    [morningEntries]
-  );
-  const nightlyEntryToday = useMemo(
-    () => nightlyEntries.find((e) => isToday(e.createdAt)),
-    [nightlyEntries]
-  );
+  const [activeTab, setActiveTab] = useState<Tab>('resentment');
 
-  const [activeTab, setActiveTab] = useState<Tab>('morning');
-
-  // Expandable Big Book passages
-  const [morningPassageExpanded, setMorningPassageExpanded] = useState(false);
-  const [nightlyPassageExpanded, setNightlyPassageExpanded] = useState(false);
-
-  // Morning
-  const [editingMorning, setEditingMorning] = useState(false);
-  const [morningPrayed, setMorningPrayed] = useState(false);
-  const [morningPlans, setMorningPlans] = useState('');
-  const [morningNotes, setMorningNotes] = useState('');
-
-  // Nightly
-  const [editingNightly, setEditingNightly] = useState(false);
-  const [nightlySaveForYesterday, setNightlySaveForYesterday] = useState<boolean | null>(null);
-  const [nightlyResent, setNightlyResent] = useState<boolean | null>(null);
-  const [nightlyResentDetails, setNightlyResentDetails] = useState('');
-  const [nightlySelfish, setNightlySelfish] = useState<boolean | null>(null);
-  const [nightlySelfishDetails, setNightlySelfishDetails] = useState('');
-  const [nightlyDishonest, setNightlyDishonest] = useState<boolean | null>(null);
-  const [nightlyDishonestDetails, setNightlyDishonestDetails] = useState('');
-  const [nightlyOwingApology, setNightlyOwingApology] = useState<boolean | null>(null);
-  const [nightlyOwingApologyDetails, setNightlyOwingApologyDetails] = useState('');
-  const [nightlyKeptSecret, setNightlyKeptSecret] = useState<boolean | null>(null);
-  const [nightlyKeptSecretDetails, setNightlyKeptSecretDetails] = useState('');
-  const [nightlyKindLoving, setNightlyKindLoving] = useState<boolean | null>(null);
-  const [nightlyKindLovingDetails, setNightlyKindLovingDetails] = useState('');
-  const [nightlyPrayed, setNightlyPrayed] = useState(false);
-
-  // Step 10
+  // Step 10 form state
   const [who, setWho] = useState('');
   const [whatHappened, setWhatHappened] = useState('');
   const [affects, setAffects] = useState<string[]>([]);
@@ -203,141 +134,6 @@ export function InventoryScreen() {
     setNotes('');
   };
 
-  const handleSaveMorning = async () => {
-    const hasContent = morningPrayed || morningPlans.trim() || morningNotes.trim();
-    if (!hasContent) {
-      Alert.alert('Please complete your morning inventory');
-      return;
-    }
-    try {
-      const morningData: MorningInventoryData = {
-        plans: morningPlans.trim() || undefined,
-        askFor: morningNotes.trim() || undefined,
-      };
-      const notes = morningPlans.trim() || morningNotes.trim() ? JSON.stringify(morningData) : undefined;
-      if (morningEntryToday && editingMorning) {
-        await updateEntry(morningEntryToday.id, { prayed: morningPrayed, notes });
-        setEditingMorning(false);
-      } else {
-        await addEntry({
-          ...emptyStep10Payload('morning'),
-          prayed: morningPrayed,
-          notes,
-        });
-      }
-      setMorningPrayed(false);
-      setMorningPlans('');
-      setMorningNotes('');
-    } catch (e) {
-      Alert.alert('Failed to save');
-    }
-  };
-
-  const handleEditMorning = () => {
-    if (!morningEntryToday) return;
-    const data = parseMorningNotes(morningEntryToday.notes);
-    setMorningPrayed(morningEntryToday.prayed);
-    setMorningPlans(data.plans ?? '');
-    setMorningNotes(data.askFor ?? '');
-    setEditingMorning(true);
-  };
-
-  const handleSaveNightly = async () => {
-    const hasAnswers =
-      nightlyResent !== null ||
-      nightlySelfish !== null ||
-      nightlyDishonest !== null ||
-      nightlyOwingApology !== null ||
-      nightlyKeptSecret !== null ||
-      nightlyKindLoving !== null ||
-      nightlyPrayed;
-    if (!hasAnswers) {
-      Alert.alert('Please complete your nightly inventory');
-      return;
-    }
-    try {
-      const nightlyData: NightlyInventoryData = {
-        resentful: nightlyResent,
-        resentfulDetails: nightlyResentDetails,
-        selfish: nightlySelfish,
-        selfishDetails: nightlySelfishDetails,
-        dishonest: nightlyDishonest,
-        dishonestDetails: nightlyDishonestDetails,
-        owingApology: nightlyOwingApology,
-        owingApologyDetails: nightlyOwingApologyDetails,
-        keptSecret: nightlyKeptSecret,
-        keptSecretDetails: nightlyKeptSecretDetails,
-        kindLoving: nightlyKindLoving,
-        kindLovingDetails: nightlyKindLovingDetails,
-      };
-      if (nightlyEntryToday && editingNightly) {
-        await updateEntry(nightlyEntryToday.id, {
-          prayed: nightlyPrayed,
-          notes: JSON.stringify(nightlyData),
-        });
-        setEditingNightly(false);
-      } else {
-        const now = new Date();
-        const hour = now.getHours();
-        const saveForYesterday = nightlySaveForYesterday ?? (hour < 16);
-        const createdAtOverride =
-          saveForYesterday
-            ? (() => {
-                const d = new Date();
-                d.setDate(d.getDate() - 1);
-                return d.toISOString();
-              })()
-            : undefined;
-        await addEntry(
-          {
-            ...emptyStep10Payload('nightly'),
-            prayed: nightlyPrayed,
-            notes: JSON.stringify(nightlyData),
-          },
-          createdAtOverride ? { createdAt: createdAtOverride } : undefined
-        );
-      }
-      setNightlyResent(null);
-      setNightlyResentDetails('');
-      setNightlySelfish(null);
-      setNightlySelfishDetails('');
-      setNightlyDishonest(null);
-      setNightlyDishonestDetails('');
-      setNightlyOwingApology(null);
-      setNightlyOwingApologyDetails('');
-      setNightlyKeptSecret(null);
-      setNightlyKeptSecretDetails('');
-      setNightlyKindLoving(null);
-      setNightlyKindLovingDetails('');
-      setNightlyPrayed(false);
-    } catch (e) {
-      Alert.alert('Failed to save');
-    }
-  };
-
-  const handleEditNightly = () => {
-    if (!nightlyEntryToday?.notes) return;
-    try {
-      const data = JSON.parse(nightlyEntryToday.notes) as NightlyInventoryData;
-      setNightlyResent(data.resentful ?? null);
-      setNightlyResentDetails(data.resentfulDetails ?? '');
-      setNightlySelfish(data.selfish ?? null);
-      setNightlySelfishDetails(data.selfishDetails ?? '');
-      setNightlyDishonest(data.dishonest ?? null);
-      setNightlyDishonestDetails(data.dishonestDetails ?? '');
-      setNightlyOwingApology(data.owingApology ?? null);
-      setNightlyOwingApologyDetails(data.owingApologyDetails ?? '');
-      setNightlyKeptSecret(data.keptSecret ?? null);
-      setNightlyKeptSecretDetails(data.keptSecretDetails ?? '');
-      setNightlyKindLoving(data.kindLoving ?? null);
-      setNightlyKindLovingDetails(data.kindLovingDetails ?? '');
-      setNightlyPrayed(nightlyEntryToday.prayed);
-      setEditingNightly(true);
-    } catch {
-      setEditingNightly(true);
-    }
-  };
-
   const handleSaveStep10 = async () => {
     if (!who.trim()) {
       Alert.alert('Please enter who you are upset at');
@@ -366,10 +162,10 @@ export function InventoryScreen() {
         await updateEntry(editingEntryId, payload);
         resetStep10Form();
       } else {
-        await addEntry({ ...emptyStep10Payload('step10'), ...payload });
+        await addEntry({ ...emptyPayload('step10'), ...payload });
         resetStep10Form();
       }
-    } catch (e) {
+    } catch (_e) {
       Alert.alert('Failed to save');
     }
   };
@@ -394,7 +190,7 @@ export function InventoryScreen() {
     try {
       await removeEntry(entryId);
       onAfterDelete?.();
-    } catch (e) {
+    } catch (_e) {
       Alert.alert('Failed to delete');
     }
   };
@@ -403,7 +199,7 @@ export function InventoryScreen() {
     try {
       await Clipboard.setStringAsync(text);
       Alert.alert(successMessage);
-    } catch (e) {
+    } catch (_e) {
       Alert.alert('Copy failed');
     }
   };
@@ -449,96 +245,23 @@ export function InventoryScreen() {
 
   const handleCopyDraft = () => handleCopyToClipboard(formatDraftForCopy());
 
-  /** Done card for morning/nightly when today's entry exists and not editing. */
-  const renderDoneCard = (title: string, subtitle: string, onEdit: () => void) => (
-    <View className="rounded-2xl p-5 bg-card border border-border">
-      <Text className="text-lg font-bold text-foreground mb-1">{title}</Text>
-      <Text className="text-sm text-muted-foreground mb-4">{subtitle}</Text>
-      <ModalButton onPress={onEdit} variant="primary">Edit</ModalButton>
-    </View>
-  );
-
-  /** Wrapper for "Saved X inventories" sections: same card style and empty state. */
-  const renderSavedSection = (
-    title: string,
-    emptyMessage: string,
-    hasEntries: boolean,
-    children: React.ReactNode
-  ) => (
-    <View className="rounded-2xl p-4 bg-card border border-border mt-4">
-      <Text className="text-base font-semibold text-foreground mb-3">{title}</Text>
-      {!hasEntries ? (
-        <Text className="text-sm text-muted-foreground">{emptyMessage}</Text>
-      ) : (
-        <View className="gap-3">{children}</View>
-      )}
-    </View>
-  );
-
-  /** Nightly question: label + Yes/No inline, details input only when Yes (Step 10 style). */
-  const renderNightlyQuestion = (
-    question: string,
-    value: boolean | null,
-    setValue: (v: boolean | null) => void,
-    details: string,
-    setDetails: (v: string) => void,
-    detailsPlaceholder: string,
-    yesIsBad = true
-  ) => (
-    <ModalSection>
-      <ModalLabel>{question}</ModalLabel>
-      <View className="flex-row gap-2 mb-2">
-        <TouchableOpacity
-          onPress={() => setValue(true)}
-          className={`flex-1 py-3 rounded-xl border-2 ${value === true ? (yesIsBad ? 'bg-destructive border-destructive' : 'bg-primary border-primary') : 'bg-muted border-border'}`}
-        >
-          <Text className={`text-center font-semibold ${value === true ? 'text-primary-foreground' : 'text-muted-foreground'}`}>Yes</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setValue(false)}
-          className={`flex-1 py-3 rounded-xl border-2 ${value === false ? (yesIsBad ? 'bg-primary border-primary' : 'bg-destructive border-destructive') : 'bg-muted border-border'}`}
-        >
-          <Text className={`text-center font-semibold ${value === false ? 'text-primary-foreground' : 'text-muted-foreground'}`}>No</Text>
-        </TouchableOpacity>
-      </View>
-      {value === true && (
-        <ModalInput
-          value={details}
-          onChangeText={setDetails}
-          placeholder={detailsPlaceholder}
-          multiline
-          numberOfLines={3}
-        />
-      )}
-    </ModalSection>
-  );
-
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color={iconColors.primary} />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <LoadingView />;
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
-        <AppHeader title="Inventory" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
-          <Text className="text-muted-foreground text-center">{error}</Text>
-        </View>
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
+        <AppHeader title="Step 10" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
+        <ErrorView message={error} onRetry={refresh} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <AppHeader title="Inventory" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
+      <AppHeader title="Step 10" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <View className="flex-row border-b border-border px-6">
-        {(['morning', 'nightly', 'step10'] as const).map((tab) => (
+        {(['resentment', 'fear'] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             onPress={() => setActiveTab(tab)}
@@ -551,7 +274,7 @@ export function InventoryScreen() {
                 activeTab === tab ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              {tab === 'step10' ? 'Step 10' : tab === 'morning' ? 'Morning' : 'Nightly'}
+              {tab === 'resentment' ? 'Resentment' : 'Fear'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -559,195 +282,7 @@ export function InventoryScreen() {
 
       <ScrollView ref={scrollRef} contentContainerStyle={{ paddingBottom: 96 }}>
         <View className="p-6 gap-4">
-          {activeTab === 'morning' && (
-            <>
-              {getPassage('morning') && (
-                <BigBookPassageView
-                  passage={getPassage('morning')!}
-                  collapsed={!morningPassageExpanded}
-                  onToggleCollapsed={() => setMorningPassageExpanded((prev) => !prev)}
-                />
-              )}
-              {morningEntryToday && !editingMorning ? (
-                renderDoneCard(
-                  'Morning inventory complete',
-                  "You've completed your morning inventory for today.",
-                  handleEditMorning
-                )
-              ) : (
-                <>
-                  <ModalSection>
-                    <View className="flex-row items-center justify-between">
-                      <ModalLabel className="mb-0">Did you pray and meditate?</ModalLabel>
-                      <Switch value={morningPrayed} onValueChange={setMorningPrayed} {...switchColors} />
-                    </View>
-                  </ModalSection>
-                  <ModalSection>
-                    <ModalLabel>Today’s plans</ModalLabel>
-                    <ModalInput
-                      value={morningPlans}
-                      onChangeText={setMorningPlans}
-                      placeholder="What do you plan to do today?"
-                      multiline
-                      numberOfLines={3}
-                    />
-                  </ModalSection>
-                  <ModalSection>
-                    <ModalLabel>What will you ask for today?</ModalLabel>
-                    <ModalInput
-                      value={morningNotes}
-                      onChangeText={setMorningNotes}
-                      placeholder="Anticipated challenges, prayer requests, etc."
-                      multiline
-                      numberOfLines={4}
-                    />
-                  </ModalSection>
-                  <ModalButtonRow>
-                    <ModalButton onPress={handleSaveMorning} variant="primary">Save Morning</ModalButton>
-                    <ModalButton
-                      onPress={() => {
-                        setMorningPrayed(false);
-                        setMorningPlans('');
-                        setMorningNotes('');
-                        if (editingMorning) setEditingMorning(false);
-                      }}
-                      variant="secondary"
-                    >
-                      {editingMorning ? 'Cancel' : 'Clear'}
-                    </ModalButton>
-                  </ModalButtonRow>
-                </>
-              )}
-              {renderSavedSection(
-                'Saved morning inventories',
-                'No saved morning inventories yet.',
-                morningEntries.length > 0,
-                morningEntries.map((entry) => {
-                  const data = parseMorningNotes(entry.notes);
-                  const preview = [data.plans, data.askFor].filter(Boolean).join(' • ') || (entry.prayed ? 'Prayed' : '—');
-                  return (
-                    <View key={entry.id} className="p-3 rounded-lg border border-border flex-row items-center justify-between">
-                      <View className="flex-1 mr-2">
-                        <Text className="text-xs text-muted-foreground mb-1">{new Date(entry.createdAt).toLocaleString()}</Text>
-                        <Text className="text-sm text-foreground" numberOfLines={2}>{preview}</Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteEntry(entry.id, () => { if (morningEntryToday?.id === entry.id) setEditingMorning(false); })}
-                        className="p-1"
-                      >
-                        <Trash2 size={18} color={iconColors.destructive} />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })
-              )}
-            </>
-          )}
-
-          {activeTab === 'nightly' && (
-            <>
-              {getPassage('nightly') && (
-                <BigBookPassageView
-                  passage={getPassage('nightly')!}
-                  collapsed={!nightlyPassageExpanded}
-                  onToggleCollapsed={() => setNightlyPassageExpanded((prev) => !prev)}
-                />
-              )}
-              {nightlyEntryToday && !editingNightly ? (
-                renderDoneCard(
-                  'Nightly inventory complete',
-                  "You've completed your nightly inventory for today.",
-                  handleEditNightly
-                )
-              ) : (
-                <>
-                  {renderNightlyQuestion('Were we resentful?', nightlyResent, setNightlyResent, nightlyResentDetails, setNightlyResentDetails, 'What or who made us resentful? Why?')}
-                  {renderNightlyQuestion('Were we selfish?', nightlySelfish, setNightlySelfish, nightlySelfishDetails, setNightlySelfishDetails, 'In what ways were we selfish?')}
-                  {renderNightlyQuestion('Were we dishonest?', nightlyDishonest, setNightlyDishonest, nightlyDishonestDetails, setNightlyDishonestDetails, 'What were we dishonest about?')}
-                  {renderNightlyQuestion('Do we owe an apology?', nightlyOwingApology, setNightlyOwingApology, nightlyOwingApologyDetails, setNightlyOwingApologyDetails, 'To whom do we owe an apology and why?')}
-                  {renderNightlyQuestion('Did we keep something to ourselves?', nightlyKeptSecret, setNightlyKeptSecret, nightlyKeptSecretDetails, setNightlyKeptSecretDetails, 'What should we have shared? With whom?')}
-                  {renderNightlyQuestion('Were we kind and loving?', nightlyKindLoving, setNightlyKindLoving, nightlyKindLovingDetails, setNightlyKindLovingDetails, 'How did we show kindness and love today?', false)}
-                  <ModalSection>
-                    <View className="flex-row items-center justify-between">
-                      <ModalLabel className="mb-0">Did you pray?</ModalLabel>
-                      <Switch value={nightlyPrayed} onValueChange={setNightlyPrayed} {...switchColors} />
-                    </View>
-                  </ModalSection>
-                  {!editingNightly && (
-                    <ModalSection>
-                      <ModalLabel>Save for</ModalLabel>
-                      <View className="flex-row gap-3 mt-2">
-                        <TouchableOpacity
-                          onPress={() => setNightlySaveForYesterday(false)}
-                          className={`flex-1 py-2.5 rounded-lg border-2 ${nightlySaveForYesterday === false ? 'border-primary bg-primary/10' : 'border-border bg-muted/50'}`}
-                        >
-                          <Text className={`text-center font-medium ${nightlySaveForYesterday === false ? 'text-primary' : 'text-muted-foreground'}`}>Today</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => setNightlySaveForYesterday(true)}
-                          className={`flex-1 py-2.5 rounded-lg border-2 ${nightlySaveForYesterday !== false ? 'border-primary bg-primary/10' : 'border-border bg-muted/50'}`}
-                        >
-                          <Text className={`text-center font-medium ${nightlySaveForYesterday !== false ? 'text-primary' : 'text-muted-foreground'}`}>Yesterday</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Text className="text-xs text-muted-foreground mt-1.5">
-                        Before 4pm we default to Yesterday so last night&apos;s inventory counts for that day.
-                      </Text>
-                    </ModalSection>
-                  )}
-                  <ModalButtonRow>
-                    <ModalButton onPress={handleSaveNightly} variant="primary">Save Nightly</ModalButton>
-                    <ModalButton
-                      onPress={() => {
-                        if (editingNightly) {
-                          setEditingNightly(false);
-                        } else {
-                          setNightlySaveForYesterday(null);
-                          setNightlyResent(null);
-                          setNightlyResentDetails('');
-                          setNightlySelfish(null);
-                          setNightlySelfishDetails('');
-                          setNightlyDishonest(null);
-                          setNightlyDishonestDetails('');
-                          setNightlyOwingApology(null);
-                          setNightlyOwingApologyDetails('');
-                          setNightlyKeptSecret(null);
-                          setNightlyKeptSecretDetails('');
-                          setNightlyKindLoving(null);
-                          setNightlyKindLovingDetails('');
-                          setNightlyPrayed(false);
-                        }
-                      }}
-                      variant="secondary"
-                    >
-                      {editingNightly ? 'Cancel' : 'Clear'}
-                    </ModalButton>
-                  </ModalButtonRow>
-                </>
-              )}
-              {renderSavedSection(
-                'Saved nightly inventories',
-                'No saved nightly inventories yet.',
-                nightlyEntries.length > 0,
-                nightlyEntries.map((entry) => (
-                  <View key={entry.id} className="p-3 rounded-lg border border-border flex-row items-center justify-between">
-                    <View className="flex-1 mr-2">
-                      <Text className="text-xs text-muted-foreground mb-1">{new Date(entry.createdAt).toLocaleString()}</Text>
-                      <Text className="text-sm text-foreground">{entry.prayed ? 'Prayed' : '—'}</Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteEntry(entry.id, () => { if (nightlyEntryToday?.id === entry.id) setEditingNightly(false); })}
-                      className="p-1"
-                    >
-                      <Trash2 size={18} color={iconColors.destructive} />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </>
-          )}
-
-          {activeTab === 'step10' && (
+          {activeTab === 'resentment' && (
             <>
               {editingEntryId ? (
                 <View className="rounded-2xl p-4 bg-muted/40 border border-border mb-4">
@@ -877,11 +412,14 @@ export function InventoryScreen() {
                 </ModalButton>
               </ModalButtonRow>
 
-              {renderSavedSection(
-                'Saved Inventories',
-                'No saved inventories yet.',
-                step10Entries.length > 0,
-                step10Entries.map((entry) => (
+              <SavedSection
+                title="Saved Inventories"
+                emptyMessage="No saved inventories yet."
+                hasEntries={step10Entries.length > 0}
+                privacyLock={privacyLock}
+                iconColors={iconColors}
+              >
+                {step10Entries.map((entry) => (
                   <View key={entry.id} className="p-3 rounded-lg border border-border">
                     <View className="flex-row items-center justify-between mb-1">
                       <Text className="text-foreground font-semibold">{entry.who}</Text>
@@ -912,9 +450,21 @@ export function InventoryScreen() {
                       ) : null}
                     </View>
                   </View>
-                ))
-              )}
+                ))}
+              </SavedSection>
             </>
+          )}
+
+          {activeTab === 'fear' && (
+            <View className="items-center py-16 gap-4">
+              <View className="bg-muted rounded-full p-4">
+                <Clock size={32} color={iconColors.muted} />
+              </View>
+              <Text className="text-lg font-bold text-foreground">Fear Inventory</Text>
+              <Text className="text-muted-foreground text-sm text-center px-6">
+                Coming soon — a guided inventory for working through fears.
+              </Text>
+            </View>
           )}
         </View>
       </ScrollView>

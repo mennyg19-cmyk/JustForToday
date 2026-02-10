@@ -3,11 +3,13 @@ import type {
   AppGoals,
   AppVisibility,
   SectionVisibility,
+  SectionId,
   ModuleSettingsMap,
   ModuleId,
 } from '../database/schema';
 import { DEFAULT_DASHBOARD_ORDER, DEFAULT_SECTION_ORDER } from '../modules';
 import * as asyncSettings from '../database/asyncFallback/settings';
+import { DEFAULT_GOALS } from '@/lib/constants';
 
 const APP_FIRST_OPEN_DATE_KEY = 'app_first_open_date';
 
@@ -29,6 +31,11 @@ const SETTINGS_KEYS = {
   STOIC_START_DATE: 'stoic_start_date',
   PROFILE: 'user_profile',
   ONBOARDING_COMPLETED: 'onboarding_completed',
+  HABITS_SHOW_METRICS: 'habits_show_metrics',
+  CLOUD_SYNC_ENABLED: 'cloud_sync_enabled',
+  SAF_FOLDER_URI: 'saf_folder_uri',
+  COMMITMENT_PROMPT_DISMISSED_DATE: 'commitment_prompt_dismissed_date',
+  PRIVACY_LOCK_ENABLED: 'privacy_lock_enabled',
 } as const;
 
 /**
@@ -73,11 +80,11 @@ export async function getThemeMode(): Promise<ThemeMode> {
     'SELECT value_json FROM app_settings WHERE key = ?',
     [SETTINGS_KEYS.THEME_MODE]
   );
-  if (!result) return 'dark';
+  if (!result) return 'system';
   try {
     return JSON.parse(result.value_json) as ThemeMode;
   } catch {
-    return 'dark';
+    return 'system';
   }
 }
 
@@ -92,15 +99,6 @@ export async function saveThemeMode(mode: ThemeMode): Promise<void> {
     [SETTINGS_KEYS.THEME_MODE, JSON.stringify(mode)]
   );
 }
-
-const DEFAULT_GOALS: AppGoals = {
-  habitsGoal: 0, // 0 = all habits count (no cap)
-  stepsGoal: 10000,
-  workoutsGoal: 1,
-  fastingHoursGoal: 16,
-  inventoriesPerDayGoal: 2,
-  gratitudesPerDayGoal: 1,
-};
 
 // Goals (merge with defaults so new keys appear for existing users)
 export async function getGoals(): Promise<AppGoals> {
@@ -124,6 +122,7 @@ const DEFAULT_VISIBILITY: AppVisibility = {
   daily_renewal: true,
   fasting: true,
   inventory: true,
+  step10: true,
   steps: true,
   workouts: true,
   gratitude: true,
@@ -257,8 +256,8 @@ export async function ensureFirstLaunchInitialized(): Promise<void> {
 
   // Persist display defaults so the dashboard doesn't rely on runtime fallbacks
   await Promise.all([
-    saveThemeMode('dark'),
-    setCompactViewMode(true),
+    saveThemeMode('system'),
+    setCompactViewMode(false),
     saveDashboardGrouped(false),
     saveDashboardOrder([...DEFAULT_DASHBOARD_ORDER]),
     saveDashboardSectionOrder([...DEFAULT_SECTION_ORDER]),
@@ -319,7 +318,7 @@ export async function getDashboardSectionOrder(): Promise<string[]> {
   }
   const raw = await getSetting<string[]>(SETTINGS_KEYS.DASHBOARD_SECTION_ORDER, []);
   if (raw.length !== 3) return [...DEFAULT_SECTION_ORDER];
-  const valid = raw.filter((id) => DEFAULT_SECTION_ORDER.includes(id));
+  const valid = raw.filter((id) => DEFAULT_SECTION_ORDER.includes(id as SectionId));
   return valid.length === 3 ? valid : [...DEFAULT_SECTION_ORDER];
 }
 
@@ -352,7 +351,7 @@ export async function getCompactViewMode(): Promise<boolean> {
   if (!(await isSQLiteAvailable())) {
     return asyncSettings.getCompactViewModeAsync();
   }
-  return getSetting<boolean>(SETTINGS_KEYS.COMPACT_VIEW, true);
+  return getSetting<boolean>(SETTINGS_KEYS.COMPACT_VIEW, false);
 }
 
 export async function setCompactViewMode(compact: boolean): Promise<void> {
@@ -422,10 +421,11 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
   await setSetting(SETTINGS_KEYS.PROFILE, profile);
 }
 
-// Onboarding Completion
-export async function hasCompletedOnboarding(): Promise<boolean> {
+// -- Onboarding --
+
+export async function getOnboardingCompleted(): Promise<boolean> {
   if (!(await isSQLiteAvailable())) {
-    return asyncSettings.hasCompletedOnboardingAsync();
+    return asyncSettings.getOnboardingCompletedAsync();
   }
   return getSetting<boolean>(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
 }
@@ -438,10 +438,99 @@ export async function setOnboardingCompleted(): Promise<void> {
   await setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
 }
 
+// -- Habits Metrics --
+
+/** Whether to show streak/week/month metrics on habit cards. Default: true. */
+export async function getHabitsShowMetrics(): Promise<boolean> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.getHabitsShowMetricsAsync();
+  }
+  return getSetting<boolean>(SETTINGS_KEYS.HABITS_SHOW_METRICS, true);
+}
+
+export async function setHabitsShowMetrics(show: boolean): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setHabitsShowMetricsAsync(show);
+    return;
+  }
+  await setSetting(SETTINGS_KEYS.HABITS_SHOW_METRICS, show);
+}
+
+// -- Cloud Sync --
+
+/** Whether cloud sync is enabled. Default: false (local-only). */
+export async function getCloudSyncEnabled(): Promise<boolean> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.getCloudSyncEnabledAsync();
+  }
+  return getSetting<boolean>(SETTINGS_KEYS.CLOUD_SYNC_ENABLED, false);
+}
+
+export async function setCloudSyncEnabled(enabled: boolean): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setCloudSyncEnabledAsync(enabled);
+    return;
+  }
+  await setSetting(SETTINGS_KEYS.CLOUD_SYNC_ENABLED, enabled);
+}
+
+/** Android SAF: persisted folder URI the user chose for cloud sync. */
+export async function getSafFolderUri(): Promise<string | null> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.getSafFolderUriAsync();
+  }
+  return getSetting<string | null>(SETTINGS_KEYS.SAF_FOLDER_URI, null);
+}
+
+export async function setSafFolderUri(uri: string | null): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setSafFolderUriAsync(uri);
+    return;
+  }
+  await setSetting(SETTINGS_KEYS.SAF_FOLDER_URI, uri);
+}
+
+// -- Daily Commitment Prompt --
+
+/** Get the date (YYYY-MM-DD) when the commitment prompt was last dismissed. */
+export async function getCommitmentPromptDismissedDate(): Promise<string | null> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.getCommitmentPromptDismissedDateAsync();
+  }
+  return getSetting<string | null>(SETTINGS_KEYS.COMMITMENT_PROMPT_DISMISSED_DATE, null);
+}
+
+/** Mark the commitment prompt as dismissed for a given date (YYYY-MM-DD). */
+export async function setCommitmentPromptDismissedDate(date: string): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setCommitmentPromptDismissedDateAsync(date);
+    return;
+  }
+  await setSetting(SETTINGS_KEYS.COMMITMENT_PROMPT_DISMISSED_DATE, date);
+}
+
+// -- Privacy Lock --
+
+/** Whether the privacy lock (biometric/passcode) is enabled. Default: false. */
+export async function getPrivacyLockEnabled(): Promise<boolean> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.getPrivacyLockEnabledAsync();
+  }
+  return getSetting<boolean>(SETTINGS_KEYS.PRIVACY_LOCK_ENABLED, false);
+}
+
+export async function setPrivacyLockEnabled(enabled: boolean): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setPrivacyLockEnabledAsync(enabled);
+    return;
+  }
+  await setSetting(SETTINGS_KEYS.PRIVACY_LOCK_ENABLED, enabled);
+}
+
 /**
  * Reset all display/appearance settings to their defaults:
- *   Theme: dark
- *   Compact cards: on
+ *   Theme: system
+ *   Compact cards: off
  *   Group by section: off
  *   Dashboard order: canonical MODULES order
  *   Section order: Sobriety → Daily Practice → Health
@@ -450,8 +539,8 @@ export async function setOnboardingCompleted(): Promise<void> {
  */
 export async function resetDisplayDefaults(): Promise<void> {
   await Promise.all([
-    saveThemeMode('dark'),
-    setCompactViewMode(true),
+    saveThemeMode('system'),
+    setCompactViewMode(false),
     saveDashboardGrouped(false),
     saveDashboardOrder([...DEFAULT_DASHBOARD_ORDER]),
     saveDashboardSectionOrder([...DEFAULT_SECTION_ORDER]),

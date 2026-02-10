@@ -8,6 +8,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { logger } from './logger';
 import * as DocumentPicker from 'expo-document-picker';
 import { getDatabase, isSQLiteAvailable } from './database/db';
 
@@ -29,6 +30,23 @@ const ALL_TABLES = [
   'daily_checkins',
   'trusted_contacts',
 ];
+
+// Valid column names per table — used to sanitize import data.
+const VALID_COLUMNS: Record<string, string[]> = {
+  habits: ['id', 'name', 'frequency', 'type', 'created_at', 'order_index', 'tracking_start_date'],
+  habit_history: ['habit_id', 'date', 'completed'],
+  sobriety_counters: ['id', 'display_name', 'actual_name', 'start_date', 'current_streak_start', 'longest_streak', 'notes', 'order_index', 'last_daily_renewal'],
+  sobriety_history: ['counter_id', 'date', 'tracked'],
+  inventory_entries: ['id', 'type', 'who', 'what_happened', 'affects_json', 'defects_json', 'assets_json', 'seventh_step_prayer', 'prayed', 'amends_needed', 'amends_to', 'help_who', 'share_with', 'notes', 'created_at', 'updated_at'],
+  steps_data: ['date', 'steps_count', 'source'],
+  gratitude_entries: ['id', 'text', 'created_at'],
+  fasting_sessions: ['id', 'start_at', 'end_at'],
+  app_settings: ['key', 'value_json'],
+  stoic_entries: ['week_number', 'day_key', 'content', 'useful', 'updated_at'],
+  workouts: ['id', 'date', 'activity_name', 'duration_minutes', 'calories_burned', 'source'],
+  daily_checkins: ['date', 'commitment_type', 'challenge', 'plan', 'todo_text', 'todo_completed', 'created_at'],
+  trusted_contacts: ['id', 'name', 'label', 'phone', 'order_index'],
+};
 
 /**
  * Get all AsyncStorage keys that belong to the app.
@@ -64,12 +82,24 @@ export async function clearSQLiteData(): Promise<void> {
 }
 
 /**
- * Clear all app data. Uses SQLite clear when available, always clears AsyncStorage.
+ * Clear all app data and reset the onboarding flag so the user sees the
+ * onboarding experience on next launch. Uses SQLite clear when available,
+ * always clears AsyncStorage.
  */
 export async function clearAllData(): Promise<void> {
   const useSqlite = await isSQLiteAvailable();
   if (useSqlite) {
     await clearSQLiteData();
+    // Ensure onboarding_completed is explicitly reset (the DELETE above
+    // already removes it from app_settings, but belt-and-suspenders).
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        "INSERT OR REPLACE INTO app_settings (key, value_json) VALUES ('onboarding_completed', 'false')"
+      );
+    } catch {
+      // Ignore — table may not exist
+    }
   }
   await clearAsyncStorageData();
 }
@@ -182,9 +212,13 @@ export async function importFromFile(): Promise<boolean> {
         continue; // Table doesn't exist — skip
       }
 
-      // Insert each row
+      // Insert each row (only allow known column names)
+      const allowedCols = VALID_COLUMNS[table] ?? [];
       for (const row of rows) {
-        const rowKeys = Object.keys(row as Record<string, unknown>);
+        const rowKeys = Object.keys(row as Record<string, unknown>).filter(
+          (k) => allowedCols.includes(k)
+        );
+        if (rowKeys.length === 0) continue;
         const values = rowKeys.map((k) => (row as Record<string, unknown>)[k]);
         const placeholders = rowKeys.map(() => '?').join(', ');
         const columns = rowKeys.join(', ');
@@ -194,7 +228,7 @@ export async function importFromFile(): Promise<boolean> {
             values as (string | number | null)[]
           );
         } catch (err) {
-          console.warn(`Failed to restore row in ${table}:`, err);
+          logger.warn(`Failed to restore row in ${table}:`, err);
         }
       }
     }

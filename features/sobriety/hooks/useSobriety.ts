@@ -1,4 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import type { SobrietyCounter } from '@/lib/database/schema';
 import {
   getSobrietyCounters,
@@ -9,7 +11,7 @@ import {
   saveSobrietyCountersOrder,
   setLastDailyRenewal,
 } from '../database';
-import { formatDateKey } from '@/utils/date';
+import { logger } from '@/lib/logger';
 
 export function useSobriety() {
   const [counters, setCounters] = useState<SobrietyCounter[]>([]);
@@ -23,20 +25,40 @@ export function useSobriety() {
       const list = await getSobrietyCounters();
       setCounters(list);
     } catch (err) {
-      console.error('Failed to fetch sobriety counters:', err);
+      logger.error('Failed to fetch sobriety counters:', err);
       setError(err instanceof Error ? err.message : 'Failed to load counters');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  // Reload counters every time the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
+  // Only tick when app is active to avoid background battery drain
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    intervalRef.current = setInterval(() => setCurrentTime(new Date()), 1000);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        if (!intervalRef.current) {
+          intervalRef.current = setInterval(() => setCurrentTime(new Date()), 1000);
+        }
+      } else {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      }
+    });
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      sub.remove();
+    };
   }, []);
 
   const addCounter = useCallback(
@@ -95,7 +117,7 @@ export function useSobriety() {
       counterId: string,
       updates: Partial<Pick<SobrietyCounter, 'displayName' | 'actualName' | 'currentStreakStart' | 'notes'>>
     ) => {
-      const updated = await updateSobrietyCounter(counterId, updates as any);
+      const updated = await updateSobrietyCounter(counterId, updates);
       setCounters((prev) =>
         prev.map((c) => (c.id === counterId ? updated : c))
       );

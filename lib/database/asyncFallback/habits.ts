@@ -54,7 +54,7 @@ function calculateCounts(
   return count;
 }
 
-function toHabit(row: StoredHabit, orderIndex: number): Habit {
+function toHabit(row: StoredHabit, _orderIndex: number): Habit {
   const history = row.history || {};
   const today = new Date();
   const todayKey = getTodayKey();
@@ -143,7 +143,7 @@ export async function deleteHabitAsync(habitId: string): Promise<void> {
   await saveStoredHabits(filtered);
 }
 
-export async function updateHabitOrderAsync(order: string[]): Promise<void> {
+export async function updateHabitOrderAsync(_order: string[]): Promise<void> {
   // Order is persisted in settings (getHabitsOrder/saveHabitsOrder). Nothing to store here.
   // Habits are re-ordered when we getHabits(order).
 }

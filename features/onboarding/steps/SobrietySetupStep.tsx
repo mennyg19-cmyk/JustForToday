@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { OnboardingStep } from '../components/OnboardingStep';
-import { Target, Plus } from 'lucide-react-native';
+import { Target, Plus, Calendar } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
 import { createSobrietyCounter } from '@/features/sobriety/database';
 
@@ -16,23 +16,54 @@ export function SobrietySetupStep({ onNext, onSkip }: StepProps) {
   const iconColors = useIconColors();
   const [displayName, setDisplayName] = useState('');
   const [actualName, setActualName] = useState('');
+  const [useToday, setUseToday] = useState(true);
+  const [startDateText, setStartDateText] = useState('');
   const [added, setAdded] = useState(false);
+
+  const parseDate = (text: string): Date | null => {
+    // Accept MM/DD/YYYY or YYYY-MM-DD
+    const slashMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slashMatch) {
+      const d = new Date(+slashMatch[3], +slashMatch[1] - 1, +slashMatch[2]);
+      if (!isNaN(d.getTime()) && d <= new Date()) return d;
+    }
+    const dashMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (dashMatch) {
+      const d = new Date(+dashMatch[1], +dashMatch[2] - 1, +dashMatch[3]);
+      if (!isNaN(d.getTime()) && d <= new Date()) return d;
+    }
+    return null;
+  };
 
   const handleAdd = async () => {
     if (!displayName.trim()) {
-      Alert.alert('Name Required', 'Please enter what you\'re tracking.');
+      Alert.alert('Name Required', 'Please enter a name for your counter.');
       return;
+    }
+
+    let startDateISO: string | undefined;
+    if (!useToday && startDateText.trim()) {
+      const parsed = parseDate(startDateText.trim());
+      if (!parsed) {
+        Alert.alert('Invalid Date', 'Please enter a valid date (MM/DD/YYYY) that is not in the future.');
+        return;
+      }
+      startDateISO = parsed.toISOString();
     }
 
     try {
       await createSobrietyCounter(
         displayName.trim(),
-        actualName.trim() || undefined
+        actualName.trim() || undefined,
+        undefined,
+        startDateISO
       );
       setAdded(true);
       setDisplayName('');
       setActualName('');
-    } catch (error) {
+      setStartDateText('');
+      setUseToday(true);
+    } catch (_error) {
       Alert.alert('Error', 'Failed to add counter. Please try again.');
     }
   };
@@ -56,40 +87,87 @@ export function SobrietySetupStep({ onNext, onSkip }: StepProps) {
           What are you working on? Add your first counter. You can add more anytime.
         </Text>
 
-        {/* Display Name Input */}
+        {/* Counter Name Input */}
         <View className="gap-2">
-          <Text className="text-sm text-muted-foreground font-medium">
-            Display Name (what others might see)
+          <Text className="text-sm text-foreground font-medium">
+            Counter Name
           </Text>
           <TextInput
             value={displayName}
             onChangeText={setDisplayName}
-            placeholder="e.g., Sobriety, Clean, Sober"
+            placeholder="e.g., Sobriety, Clean Time, Sober"
             placeholderTextColor={iconColors.muted}
             className="bg-input text-input-foreground text-base px-4 py-3 rounded-xl border border-border"
             autoCapitalize="sentences"
             returnKeyType="next"
           />
+          <Text className="text-xs text-muted-foreground">
+            How this counter appears in your app
+          </Text>
         </View>
 
-        {/* Actual Name Input (Optional) */}
+        {/* Private Name Input (Optional) */}
         <View className="gap-2">
-          <Text className="text-sm text-muted-foreground font-medium">
-            Actual Name (private, optional)
+          <Text className="text-sm text-foreground font-medium">
+            What you're tracking (private, optional)
           </Text>
           <TextInput
             value={actualName}
             onChangeText={setActualName}
-            placeholder="e.g., Alcohol, Cocaine, Gambling"
+            placeholder="e.g., Alcohol, Gambling, Smoking"
             placeholderTextColor={iconColors.muted}
             className="bg-input text-input-foreground text-base px-4 py-3 rounded-xl border border-border"
             autoCapitalize="sentences"
             returnKeyType="done"
-            onSubmitEditing={handleAdd}
           />
           <Text className="text-xs text-muted-foreground italic">
-            Kept private on your device
+            Only you see this — stays on your device
           </Text>
+        </View>
+
+        {/* Start Date */}
+        <View className="gap-2">
+          <Text className="text-sm text-foreground font-medium">
+            When did you start?
+          </Text>
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={() => setUseToday(true)}
+              className={`flex-1 py-3 rounded-xl border items-center ${
+                useToday ? 'bg-primary/20 border-primary/40' : 'bg-secondary border-border'
+              }`}
+              activeOpacity={0.7}
+            >
+              <Text className={useToday ? 'text-primary font-semibold' : 'text-foreground'}>
+                Today
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setUseToday(false)}
+              className={`flex-1 py-3 rounded-xl border items-center ${
+                !useToday ? 'bg-primary/20 border-primary/40' : 'bg-secondary border-border'
+              }`}
+              activeOpacity={0.7}
+            >
+              <Text className={!useToday ? 'text-primary font-semibold' : 'text-foreground'}>
+                Earlier date
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {!useToday && (
+            <View className="flex-row items-center gap-3 mt-1">
+              <Calendar size={18} color={iconColors.primary} />
+              <TextInput
+                value={startDateText}
+                onChangeText={setStartDateText}
+                placeholder="MM/DD/YYYY"
+                placeholderTextColor={iconColors.muted}
+                className="flex-1 bg-input text-input-foreground text-base px-4 py-3 rounded-xl border border-border"
+                keyboardType="numbers-and-punctuation"
+                returnKeyType="done"
+              />
+            </View>
+          )}
         </View>
 
         {/* Add Button */}
@@ -98,7 +176,7 @@ export function SobrietySetupStep({ onNext, onSkip }: StepProps) {
           className="bg-secondary rounded-xl py-3 px-4 flex-row items-center justify-center gap-2"
           activeOpacity={0.8}
         >
-          <Plus size={20} color={iconColors.secondaryForeground} />
+          <Plus size={20} color={iconColors.foreground} />
           <Text className="text-secondary-foreground text-base font-semibold">
             Add Counter
           </Text>
@@ -107,13 +185,13 @@ export function SobrietySetupStep({ onNext, onSkip }: StepProps) {
         {added && (
           <View className="bg-primary/10 rounded-xl p-4 border border-primary/20">
             <Text className="text-primary text-center font-medium">
-               Counter added! You can add more later.
+              Counter added! You can add more later.
             </Text>
           </View>
         )}
 
         <Text className="text-sm text-muted-foreground text-center leading-6 pt-2">
-          Not applicable? No problemjust skip.
+          Not applicable? No problem — just skip.
         </Text>
       </View>
     </OnboardingStep>

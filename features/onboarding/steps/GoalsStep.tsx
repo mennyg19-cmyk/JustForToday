@@ -34,7 +34,7 @@ export function GoalsStep({ onNext, onSkip }: StepProps) {
   };
 
   const updateGoal = (key: keyof AppGoals, value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = parseInt(value, 10) || 0;
     setGoals({ ...goals, [key]: numValue });
   };
 

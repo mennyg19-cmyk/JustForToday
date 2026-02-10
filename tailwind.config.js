@@ -99,23 +99,15 @@ module.exports = {
           'ring': 'rgb(var(--sidebar-ring) / <alpha-value>)',
         },
       },
-      // Theme fonts - loaded via expo-font in _layout.tsx
-      // Each theme defines its font families in theme.ts
+      // SF Pro Display (Apple system font) — premium, native feel, zero load time
       fontFamily: {
         // Semantic font families (use these in components)
-        'heading': ['Inter_600SemiBold'],
-        'heading-bold': ['Inter_700Bold'],
-        'body': ['Inter_400Regular'],
-        'body-medium': ['Inter_500Medium'],
+        'heading': ['System'],
+        'heading-bold': ['System'],
+        'body': ['System'],
+        'body-medium': ['System'],
         'mono': ['JetBrainsMono_400Regular'],
         'mono-medium': ['JetBrainsMono_500Medium'],
-        // Direct font access
-        'inter': ['Inter_400Regular'],
-        'inter-medium': ['Inter_500Medium'],
-        'inter-semibold': ['Inter_600SemiBold'],
-        'inter-bold': ['Inter_700Bold'],
-        'jetbrains': ['JetBrainsMono_400Regular'],
-        'jetbrains-medium': ['JetBrainsMono_500Medium'],
       },
       fontWeight: {
         extrablack: '950',

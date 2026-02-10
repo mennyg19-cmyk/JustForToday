@@ -7,14 +7,13 @@ import {
   ActivityIndicator,
   type TextInputProps,
 } from 'react-native';
+import { useIconColors } from '@/lib/iconTheme';
 
 /**
  * Single source of modal content styling. Use these components inside
  * ModalSurface for every modal (habit, sobriety, gratitude, fasting,
  * inventory, etc.) so the theme and look stay consistent app-wide.
  */
-
-const PLACEHOLDER_COLOR = '#71717a';
 
 /** Modal main title (e.g. "Add New Habit") */
 export function ModalTitle({
@@ -27,6 +26,7 @@ export function ModalTitle({
   return (
     <Text
       className={`text-2xl font-bold mb-6 text-modal-content-foreground ${className}`.trim()}
+      style={{ letterSpacing: 0.2 }}
     >
       {children}
     </Text>
@@ -53,13 +53,14 @@ export function ModalLabel({
 /** Standard text input inside modals */
 export function ModalInput({
   className = '',
-  placeholderTextColor = PLACEHOLDER_COLOR,
+  placeholderTextColor,
   ...props
 }: TextInputProps & { className?: string }) {
+  const iconColors = useIconColors();
   return (
     <TextInput
-      placeholderTextColor={placeholderTextColor}
-      className={`rounded-xl px-4 py-3 text-base bg-input border-2 border-modal-border text-input-foreground ${className}`.trim()}
+      placeholderTextColor={placeholderTextColor ?? iconColors.muted}
+      className={`rounded-xl px-4 py-3 text-base bg-input border border-modal-border text-input-foreground ${className}`.trim()}
       {...props}
     />
   );
@@ -98,9 +99,10 @@ export function ModalButton({
   loading?: boolean;
   className?: string;
 }) {
+  const iconColors = useIconColors();
   const isPrimary = variant === 'primary';
   const isDestructive = variant === 'destructive';
-  const base = 'flex-1 rounded-xl p-4 border-2 justify-center items-center';
+  const base = 'flex-1 rounded-xl p-4 border justify-center items-center';
   const variantClass = isPrimary
     ? 'bg-primary border-primary'
     : isDestructive
@@ -114,6 +116,12 @@ export function ModalButton({
         ? 'text-destructive-foreground text-base font-bold'
         : 'text-muted-foreground text-base font-bold';
 
+  const spinnerColor = isPrimary
+    ? iconColors.primaryForeground
+    : isDestructive
+      ? iconColors.destructiveForeground
+      : undefined;
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -123,9 +131,7 @@ export function ModalButton({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator
-          color={isPrimary || isDestructive ? '#fff' : undefined}
-        />
+        <ActivityIndicator color={spinnerColor} />
       ) : (
         <Text className={textClass}>{children}</Text>
       )}
@@ -158,7 +164,7 @@ export function ModalChoiceButton({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className={`flex-1 rounded-xl p-3 border-2 text-center font-semibold ${
+      className={`flex-1 rounded-xl p-3 border text-center font-semibold ${
         selected
           ? 'border-primary bg-primary/20 text-primary'
           : 'border-modal-border bg-muted text-muted-foreground'

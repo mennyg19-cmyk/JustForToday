@@ -2,7 +2,6 @@ import { getDatabase, isSQLiteAvailable } from '@/lib/database/db';
 import type { SobrietyCounter } from '@/lib/database/schema';
 import { getSobrietyOrder, saveSobrietyOrder } from '@/lib/settings';
 import { triggerSync } from '@/lib/sync';
-import { formatDateKey } from '@/utils/date';
 import * as asyncSobriety from '@/lib/database/asyncFallback/sobriety';
 
 function calculateLongestStreak(
@@ -14,7 +13,10 @@ function calculateLongestStreak(
   let longestStreak = 0;
   let currentStreak = 0;
   for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
-    const dateKey = d.toISOString().split('T')[0];
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const dateKey = `${y}-${mo}-${da}`;
     const isSober = history[dateKey] !== false;
     if (isSober) {
       currentStreak++;
@@ -77,11 +79,15 @@ export async function getSobrietyCounters(): Promise<SobrietyCounter[]> {
     last_daily_renewal: string | null;
   }>('SELECT * FROM sobriety_counters ORDER BY order_index ASC');
 
-  const historyRows = await db.getAllAsync<{
-    counter_id: string;
-    date: string;
-    tracked: number;
-  }>('SELECT * FROM sobriety_history');
+  // Only load history for existing counters
+  const counterIds = rows.map((r) => r.id);
+  const historyRows = counterIds.length > 0
+    ? await db.getAllAsync<{
+        counter_id: string;
+        date: string;
+        tracked: number;
+      }>(`SELECT * FROM sobriety_history WHERE counter_id IN (${counterIds.map(() => '?').join(',')})`, counterIds)
+    : [];
 
   const historyByCounter: Record<string, Record<string, boolean>> = {};
   for (const h of historyRows) {
@@ -225,6 +231,7 @@ export async function deleteSobrietyCounter(counterId: string): Promise<void> {
     return;
   }
   const db = await getDatabase();
+  await db.runAsync('DELETE FROM sobriety_history WHERE counter_id = ?', [counterId]);
   await db.runAsync('DELETE FROM sobriety_counters WHERE id = ?', [counterId]);
   triggerSync();
 }

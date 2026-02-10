@@ -1,29 +1,39 @@
-import { Platform } from 'react-native';
+import { NativeModules } from 'react-native';
+import { logger } from '@/lib/logger';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+let AppleHealthKit: any = null;
+try {
+  const mod = require('react-native-health');
+  AppleHealthKit = mod?.default ?? mod;
+} catch (e) {
+  logger.error('Failed to load react-native-health:', e);
+}
+import { formatDateKey } from '@/utils/date';
 
-let AppleHealthKit: typeof import('react-native-health') | null = null;
-
-// Only import HealthKit on iOS
-if (Platform.OS === 'ios') {
-  try {
-    AppleHealthKit = require('react-native-health');
-  } catch {
-    console.warn('HealthKit module not available');
+/** Check if the native HealthKit bridge is actually available */
+export function getHealthKitDiagnostics(): string {
+  const nativeMod = NativeModules.AppleHealthKit;
+  const parts: string[] = [];
+  parts.push(`NativeModules.AppleHealthKit: ${nativeMod ? 'EXISTS' : 'MISSING'}`);
+  parts.push(`JS module loaded: ${AppleHealthKit ? 'YES' : 'NO'}`);
+  if (AppleHealthKit) {
+    parts.push(`initHealthKit type: ${typeof AppleHealthKit.initHealthKit}`);
+    parts.push(`Constants: ${AppleHealthKit.Constants ? 'YES' : 'NO'}`);
   }
+  if (nativeMod) {
+    parts.push(`Native keys: ${Object.keys(nativeMod).slice(0, 5).join(', ')}...`);
+  }
+  return parts.join('\n');
 }
 
 /**
  * Initialize HealthKit permissions
  * Must be called before accessing any health data
- * Returns false on Android (HealthKit is iOS-only)
  */
 export const initHealthKit = async (): Promise<boolean> => {
-  if (Platform.OS !== 'ios') {
-    return false;
-  }
-
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.initHealthKit !== 'function') {
-      console.warn('HealthKit not available: initHealthKit is missing');
+      logger.warn('HealthKit not available: initHealthKit is missing');
       return false;
     }
 
@@ -44,23 +54,18 @@ export const initHealthKit = async (): Promise<boolean> => {
       });
     });
   } catch (err) {
-    console.error('HealthKit initialization failed:', err);
+    logger.error('HealthKit initialization failed:', err);
     return false;
   }
 };
 
 /**
  * Request HealthKit step count permission from user
- * Returns false on Android (HealthKit is iOS-only)
  */
 export const requestStepPermission = async (): Promise<boolean> => {
-  if (Platform.OS !== 'ios') {
-    return false;
-  }
-
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.initHealthKit !== 'function') {
-      console.warn('HealthKit not available: initHealthKit is missing');
+      logger.warn('HealthKit not available: initHealthKit is missing');
       return false;
     }
 
@@ -81,24 +86,23 @@ export const requestStepPermission = async (): Promise<boolean> => {
       });
     });
   } catch (err) {
-    console.error('Step permission request failed:', err);
+    logger.error('Step permission request failed:', err);
     return false;
   }
 };
 
 /**
  * Request HealthKit permissions for steps, workouts, and active energy (for full fitness sync).
- * Returns false on Android (HealthKit is iOS-only)
  */
 export const requestFitnessPermissions = async (): Promise<boolean> => {
-  if (Platform.OS !== 'ios') {
-    return false;
-  }
-
   try {
-    if (!AppleHealthKit || typeof AppleHealthKit.initHealthKit !== 'function') {
-      console.warn('HealthKit not available: initHealthKit is missing');
-      return false;
+    if (!AppleHealthKit) {
+      logger.error('HealthKit: AppleHealthKit module is null/undefined');
+      throw new Error('HealthKit native module not loaded. The react-native-health library may not be compatible with the new architecture.');
+    }
+    if (typeof AppleHealthKit.initHealthKit !== 'function') {
+      logger.error('HealthKit: initHealthKit is not a function. Module keys:', Object.keys(AppleHealthKit));
+      throw new Error(`HealthKit module loaded but initHealthKit missing. Available: ${Object.keys(AppleHealthKit).join(', ')}`);
     }
 
     const Permissions = AppleHealthKit.Constants.Permissions;
@@ -123,7 +127,7 @@ export const requestFitnessPermissions = async (): Promise<boolean> => {
       });
     });
   } catch (err) {
-    console.error('Fitness permission request failed:', err);
+    logger.error('Fitness permission request failed:', err);
     return false;
   }
 };
@@ -141,13 +145,8 @@ export interface HealthKitWorkout {
 
 /**
  * Fetch workouts for a specific date from HealthKit
- * Returns empty array on Android (HealthKit is iOS-only)
  */
 export const getWorkoutsForDate = async (date: Date): Promise<HealthKitWorkout[]> => {
-  if (Platform.OS !== 'ios') {
-    return [];
-  }
-
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.getAnchoredWorkouts !== 'function') {
       return [];
@@ -187,20 +186,15 @@ export const getWorkoutsForDate = async (date: Date): Promise<HealthKitWorkout[]
       source: 'healthkit' as const,
     }));
   } catch (err) {
-    console.error('Failed to fetch workouts:', err);
+    logger.error('Failed to fetch workouts:', err);
     return [];
   }
 };
 
 /**
  * Fetch total active energy burned (kcal) for a specific date
- * Returns null on Android (HealthKit is iOS-only)
  */
 export const getActiveEnergyForDate = async (date: Date): Promise<number | null> => {
-  if (Platform.OS !== 'ios') {
-    return null;
-  }
-
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.getActiveEnergyBurned !== 'function') {
       return null;
@@ -230,7 +224,7 @@ export const getActiveEnergyForDate = async (date: Date): Promise<number | null>
     const total = samples.reduce((sum, s: { value?: number }) => sum + (s?.value ?? 0), 0);
     return Math.round(total);
   } catch (err) {
-    console.error('Failed to fetch active energy:', err);
+    logger.error('Failed to fetch active energy:', err);
     return null;
   }
 };
@@ -238,16 +232,12 @@ export const getActiveEnergyForDate = async (date: Date): Promise<number | null>
 /**
  * Fetch step count for a specific date
  * @param date - The date to fetch steps for
- * @returns Step count, or null if unavailable (always null on Android)
+ * @returns Step count, or null if unavailable
  */
 export const getStepsForDate = async (date: Date): Promise<number | null> => {
-  if (Platform.OS !== 'ios') {
-    return null;
-  }
-
   try {
     if (!AppleHealthKit || typeof AppleHealthKit.getStepCount !== 'function') {
-      console.warn('HealthKit not available: getStepCount is missing');
+      logger.warn('HealthKit not available: getStepCount is missing');
       return null;
     }
 
@@ -285,34 +275,27 @@ export const getStepsForDate = async (date: Date): Promise<number | null> => {
 
     return 0;
   } catch (err) {
-    console.error('Failed to fetch step count:', err);
+    logger.error('Failed to fetch step count:', err);
     return null;
   }
 };
 
 /**
  * Fetch step count for today
- * @returns Today's step count, or null if unavailable (always null on Android)
+ * @returns Today's step count, or null if unavailable
  */
 export const getTodaySteps = async (): Promise<number | null> => {
-  if (Platform.OS !== 'ios') {
-    return null;
-  }
   return getStepsForDate(new Date());
 };
 
 /**
  * Fetch step count for the past N days
  * @param days - Number of days to fetch
- * @returns Array of { date, steps } objects (empty array on Android)
+ * @returns Array of { date, steps } objects
  */
 export const getStepsForPastDays = async (
   days: number
 ): Promise<Array<{ date: string; steps: number }>> => {
-  if (Platform.OS !== 'ios') {
-    return [];
-  }
-
   try {
     const results: Array<{ date: string; steps: number }> = [];
 
@@ -323,7 +306,7 @@ export const getStepsForPastDays = async (
       const steps = await getStepsForDate(date);
       if (steps !== null) {
         results.push({
-          date: date.toISOString().split('T')[0],
+          date: formatDateKey(date),
           steps,
         });
       }
@@ -331,7 +314,7 @@ export const getStepsForPastDays = async (
 
     return results;
   } catch (err) {
-    console.error('Failed to fetch past days steps:', err);
+    logger.error('Failed to fetch past days steps:', err);
     return [];
   }
 };
@@ -350,7 +333,7 @@ export const getAverageSteps = async (days: number): Promise<number | null> => {
     const totalSteps = pastDaysData.reduce((sum, day) => sum + day.steps, 0);
     return Math.round(totalSteps / pastDaysData.length);
   } catch (err) {
-    console.error('Failed to calculate average steps:', err);
+    logger.error('Failed to calculate average steps:', err);
     return null;
   }
 };

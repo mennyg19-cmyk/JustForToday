@@ -23,10 +23,10 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// AsyncStorage used by CheckedInCard (extracted to components/)
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
-import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Check } from 'lucide-react-native';
+import { AlertCircle, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react-native';
 import {
   getDashboardData,
   type DashboardData,
@@ -40,7 +40,7 @@ import {
   getDashboardGrouped,
   getCompactViewMode,
 } from '@/lib/settings';
-import type { AppVisibility, SectionVisibility, ModuleId, ModuleSettingsMap, DailyCheckIn } from '@/lib/database/schema';
+import type { AppVisibility, SectionVisibility, ModuleSettingsMap, DailyCheckIn } from '@/lib/database/schema';
 import { useColorScheme } from 'nativewind';
 import { useIconColors } from '@/lib/iconTheme';
 import { getCardConfigs, CARD_IMAGES } from '@/lib/cardConfigs';
@@ -49,8 +49,12 @@ import { DEFAULT_DASHBOARD_ORDER, getSectionGroups } from '@/lib/modules';
 import type { SectionId } from '@/lib/database/schema';
 import { useCheckIn } from '@/features/checkin/hooks/useCheckIn';
 import { getEncouragement } from '@/lib/encouragement';
-import { commitmentLabel, getCommitmentRemainingMs, commitmentDurationMs } from '@/lib/commitment';
-import { getUserProfile, type UserProfile } from '@/lib/settings/database';
+// commitment utilities used by CheckedInCard (extracted to components/)
+import { getUserProfile, type UserProfile, getCommitmentPromptDismissedDate, setCommitmentPromptDismissedDate } from '@/lib/settings/database';
+import { DailyCommitmentPrompt } from '@/components/DailyCommitmentPrompt';
+import { CheckedInCard, LastCommitmentInfo } from '@/components/CheckedInCard';
+import { getTodayKey } from '@/utils/date';
+import { logger } from '@/lib/logger';
 
 type SectionKey = SectionId;
 const defaultOrder = DEFAULT_DASHBOARD_ORDER;
@@ -89,6 +93,7 @@ function isGoalCompleted(id: string, data: DashboardData): boolean {
     case 'fasting':
       return data.fastingHoursGoal > 0 && data.fastingHours >= data.fastingHoursGoal;
     case 'inventory':
+    case 'step10':
       return data.inventoriesPerDayGoal > 0 && data.inventoryCount >= data.inventoriesPerDayGoal;
     case 'steps':
       return data.stepsGoal > 0 && data.stepsCount >= data.stepsGoal;
@@ -120,14 +125,17 @@ export default function DashboardScreen() {
   const [sectionVisibility, setSectionVisibility] = useState<SectionVisibility | null>(null);
   const [dashboardGrouped, setDashboardGrouped] = useState<boolean>(false);
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(['sobriety', 'daily_practice', 'health']);
-  const [moduleSettings, setModuleSettings] = useState<ModuleSettingsMap>({});
+  const [_moduleSettings, setModuleSettings] = useState<ModuleSettingsMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardOrder, setDashboardOrder] = useState<string[]>([]);
-  const [compactView, setCompactViewState] = useState(true); // default compact
+  const [compactView, setCompactViewState] = useState(false); // default expanded
   const [refreshing, setRefreshing] = useState(false);
+  // Daily commitment prompt state
+  const [showCommitmentPrompt, setShowCommitmentPrompt] = useState(false);
+  const [promptDismissedToday, setPromptDismissedToday] = useState(false);
   // Tools start collapsed — the home screen focuses on today's check-in
-  const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [toolsExpanded, setToolsExpanded] = useState(true);
   const [sectionsCollapsed, setSectionsCollapsed] = useState<Record<SectionKey, boolean>>({
     health: false,
     sobriety: false,
@@ -158,7 +166,7 @@ export default function DashboardScreen() {
       setCompactViewState(compact);
       setError(null);
     } catch (err) {
-      console.error('Failed to fetch dashboard:', err);
+      logger.error('Failed to fetch dashboard:', err);
       setError(
         err instanceof Error ? err.message : 'Failed to load dashboard'
       );
@@ -172,25 +180,73 @@ export default function DashboardScreen() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Refresh dashboard, check-in, and profile on screen focus
+  // Refresh dashboard, check-in, profile, and commitment prompt on screen focus
   useFocusEffect(
     useCallback(() => {
       fetchDashboard();
       refreshCheckIn();
       getUserProfile().then(setProfile).catch(() => {});
+
+      // Check whether to show the daily commitment prompt
+      (async () => {
+        try {
+          const today = getTodayKey();
+          const dismissedDate = await getCommitmentPromptDismissedDate();
+          const dismissed = dismissedDate === today;
+          setPromptDismissedToday(dismissed);
+
+          // Fetch today's check-in inline to avoid stale closure
+          const { getCheckInForDate } = await import('@/features/checkin/database');
+          const todayCI = await getCheckInForDate(today);
+          if (!todayCI && !dismissed) {
+            setShowCommitmentPrompt(true);
+          }
+        } catch (_err) {
+          // silently skip prompt on error
+        }
+      })();
+
       return () => {};
     }, [fetchDashboard, refreshCheckIn])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchDashboard(), refreshCheckIn()]);
-    setRefreshing(false);
+    try {
+      await Promise.all([fetchDashboard(), refreshCheckIn()]);
+    } catch (err) {
+      logger.error('Dashboard refresh failed:', err);
+    } finally {
+      setRefreshing(false);
+    }
   };
+
+  /** Dismiss the daily commitment prompt and mark it as dismissed for today. */
+  const handleDismissPrompt = useCallback(async () => {
+    setShowCommitmentPrompt(false);
+    setPromptDismissedToday(true);
+    try {
+      await setCommitmentPromptDismissedDate(getTodayKey());
+    } catch (err) {
+      logger.error('Failed to save prompt dismissal:', err);
+    }
+  }, []);
+
+  /** Navigate to check-in from the prompt and dismiss it. */
+  const handlePromptGoToCheckIn = useCallback(async () => {
+    setShowCommitmentPrompt(false);
+    setPromptDismissedToday(true);
+    try {
+      await setCommitmentPromptDismissedDate(getTodayKey());
+    } catch (err) {
+      logger.error('Failed to save prompt dismissal:', err);
+    }
+    router.push('/check-in');
+  }, [router]);
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background items-center justify-center">
         <ActivityIndicator size="large" />
       </SafeAreaView>
     );
@@ -198,7 +254,7 @@ export default function DashboardScreen() {
 
   if (error || !dailyProgress || !visibility) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <View className="flex-1 items-center justify-center px-6">
           <AlertCircle className="text-destructive mb-4" size={48} />
           <Text className="text-lg font-bold text-foreground mb-2">
@@ -355,7 +411,7 @@ export default function DashboardScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       {/* ---------------------------------------------------------------- */}
       {/* Header: today's date, personalized greeting, controls             */}
       {/* ---------------------------------------------------------------- */}
@@ -391,10 +447,30 @@ export default function DashboardScreen() {
               todayCheckIn={todayCheckIn}
               onReset={resetCheckIn}
               encouragement={encouragement}
-              iconColors={iconColors}
               isDark={isDark}
             />
+          ) : promptDismissedToday ? (
+            /* Gentle reminder — user dismissed the prompt earlier */
+            <View className="gap-2">
+              <TouchableOpacity
+                onPress={() => router.push('/check-in')}
+                activeOpacity={0.8}
+                className="bg-primary rounded-2xl py-6 px-6 items-center"
+              >
+                <Text className="text-primary-foreground font-bold text-lg">
+                  Ready when you are
+                </Text>
+                <View className="flex-row items-center gap-1 mt-1">
+                  <Text className="text-primary-foreground/70 text-sm">
+                    No rush — check in anytime
+                  </Text>
+                  <ChevronRight size={14} color={iconColors.primaryForeground} />
+                </View>
+              </TouchableOpacity>
+              <LastCommitmentInfo lastCheckIn={lastCheckIn} />
+            </View>
           ) : (
+            /* First view of the day — bold CTA */
             <View className="gap-2">
               <TouchableOpacity
                 onPress={() => router.push('/check-in')}
@@ -441,7 +517,7 @@ export default function DashboardScreen() {
                   if (!secVis[sectionKey]) return null;
                   const section = DASHBOARD_SECTIONS[sectionKey];
                   const moduleIdsInSection = orderedIds.filter((id) =>
-                    section.moduleIds.includes(id)
+                    section.moduleIds.includes(id as keyof AppVisibility)
                   );
                   if (moduleIdsInSection.length === 0) return null;
                   const isCollapsed = sectionsCollapsed[sectionKey];
@@ -486,308 +562,20 @@ export default function DashboardScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Daily commitment prompt — shown on first open of the day */}
+      <DailyCommitmentPrompt
+        visible={showCommitmentPrompt}
+        lastCheckIn={lastCheckIn}
+        userName={profile.name || undefined}
+        onGoToCheckIn={handlePromptGoToCheckIn}
+        onDismiss={handleDismissPrompt}
+      />
     </SafeAreaView>
   );
 }
 
-// ---------------------------------------------------------------------------
-// LastCommitmentInfo — shows how long ago the last commitment expired
-// ---------------------------------------------------------------------------
-
-/**
- * Format a time-ago string from milliseconds.
- * e.g. "2 days ago", "5 hours ago", "just now"
- */
-function formatTimeAgo(ms: number): string {
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 2) return 'just now';
-  if (minutes < 60) return `${minutes} minutes ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-  const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
-}
-
-function LastCommitmentInfo({ lastCheckIn }: { lastCheckIn: DailyCheckIn | null }) {
-  if (!lastCheckIn) return null;
-
-  // If the last check-in was today, don't show the expiry
-  const today = new Date().toISOString().slice(0, 10);
-  if (lastCheckIn.date === today) return null;
-
-  // Only show expiry for timed commitments
-  if (lastCheckIn.commitmentType === 'none') {
-    return (
-      <Text className="text-muted-foreground text-xs text-center">
-        Last check-in was on {new Date(lastCheckIn.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-      </Text>
-    );
-  }
-
-  // Calculate when the commitment expired
-  const durationMs = commitmentDurationMs(lastCheckIn.commitmentType);
-  if (durationMs == null) return null;
-
-  const startMs = new Date(lastCheckIn.createdAt).getTime();
-  const expiredAtMs = startMs + durationMs;
-  const agoMs = Date.now() - expiredAtMs;
-
-  if (agoMs <= 0) {
-    // Commitment from a previous day is somehow still active — unlikely but handle gracefully
-    return null;
-  }
-
-  return (
-    <Text className="text-muted-foreground text-xs text-center">
-      Last {commitmentLabel(lastCheckIn.commitmentType).toLowerCase()} expired {formatTimeAgo(agoMs)}
-    </Text>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// CheckedInCard — shown when the user has already checked in today
-// ---------------------------------------------------------------------------
-
-/** Rotating encouragement messages for when the countdown is active */
-const COUNTDOWN_MESSAGES = [
-  'You are doing this.',
-  'One moment at a time.',
-  'You chose this. You can do it.',
-  'Stay with it.',
-  'This hour is yours.',
-  'Keep going — you are stronger than you think.',
-  'Right now, you are succeeding.',
-];
-
-function getCountdownMessage(): string {
-  const idx = Math.floor(Date.now() / 60000) % COUNTDOWN_MESSAGES.length;
-  return COUNTDOWN_MESSAGES[idx];
-}
-
-/** AsyncStorage key for per-challenge completion states. */
-const TODOS_KEY_PREFIX = 'lifetrack_todos_';
-/** AsyncStorage key for committed counter names. */
-const COMMITTED_KEY_PREFIX = 'lifetrack_committed_';
-
-function CheckedInCard({
-  todayCheckIn,
-  onReset,
-  encouragement,
-  iconColors,
-  isDark,
-}: {
-  todayCheckIn: DailyCheckIn;
-  onReset: () => void;
-  encouragement: string;
-  iconColors: ReturnType<typeof useIconColors>;
-  isDark: boolean;
-}) {
-  const hasTimedCommitment = todayCheckIn.commitmentType !== 'none';
-
-  // Live countdown state — ticks every second
-  const [remainingMs, setRemainingMs] = useState<number | null>(() =>
-    getCommitmentRemainingMs(todayCheckIn)
-  );
-  const [countdownMsg, setCountdownMsg] = useState(getCountdownMessage);
-  const [confirmReset, setConfirmReset] = useState(false);
-
-  // Per-challenge completion checkboxes
-  const todoLines = todayCheckIn.todoText
-    ? todayCheckIn.todoText.split('\n').filter(Boolean)
-    : [];
-  const [todosCompleted, setTodosCompleted] = useState<boolean[]>(() =>
-    todoLines.map(() => todayCheckIn.todoCompleted)
-  );
-
-  // Committed addiction names
-  const [committedNames, setCommittedNames] = useState<string[]>([]);
-
-  // Load per-item completion states + committed names from AsyncStorage
-  useEffect(() => {
-    const dateKey = todayCheckIn.date;
-    AsyncStorage.getItem(TODOS_KEY_PREFIX + dateKey).then((raw) => {
-      if (raw) {
-        try {
-          const arr = JSON.parse(raw) as boolean[];
-          setTodosCompleted(todoLines.map((_, i) => arr[i] ?? false));
-        } catch {
-          setTodosCompleted(todoLines.map(() => todayCheckIn.todoCompleted));
-        }
-      }
-    }).catch(() => {});
-
-    AsyncStorage.getItem(COMMITTED_KEY_PREFIX + dateKey).then((raw) => {
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          // Handle both old format (string[]) and new format (object[] with .name)
-          const names = parsed.map((item: any) =>
-            typeof item === 'string' ? item : item.name
-          );
-          setCommittedNames(names);
-        } catch {}
-      }
-    }).catch(() => {});
-  }, [todayCheckIn.date]);
-
-  const toggleTodoItem = useCallback(async (index: number) => {
-    const next = [...todosCompleted];
-    next[index] = !next[index];
-    setTodosCompleted(next);
-    await AsyncStorage.setItem(
-      TODOS_KEY_PREFIX + todayCheckIn.date,
-      JSON.stringify(next)
-    ).catch(() => {});
-  }, [todosCompleted, todayCheckIn.date]);
-
-  useEffect(() => {
-    if (!hasTimedCommitment) return;
-
-    const tick = () => {
-      const ms = getCommitmentRemainingMs(todayCheckIn);
-      setRemainingMs(ms);
-      setCountdownMsg(getCountdownMessage());
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [todayCheckIn, hasTimedCommitment]);
-
-  const commitmentActive = remainingMs != null && remainingMs > 0;
-
-  const formatCountdown = (ms: number): string => {
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(h)}:${pad(m)}:${pad(s)}`;
-  };
-
-  // Accent background color — uses the secondary palette for a distinct card feel
-  const cardBg = isDark ? 'rgba(50,42,28,1)' : 'rgba(245,238,220,1)';
-  const accentBorder = isDark ? 'rgba(160,125,60,0.4)' : 'rgba(212,178,106,0.5)';
-  const accentText = isDark ? '#F0E6C8' : '#64511A';
-
-  return (
-    <View style={{ borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: accentBorder }}>
-      {/* Main commitment area — distinct accent background */}
-      <View style={{ backgroundColor: cardBg, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }} className="gap-3">
-        {/* Encouragement text */}
-        <Text style={{ color: accentText }} className="text-sm italic text-center">
-          {commitmentActive ? countdownMsg : encouragement}
-        </Text>
-
-        {/* Commitment label */}
-        <View className="flex-row items-center justify-center gap-2">
-          <CheckCircle size={18} color={accentText} />
-          <Text className="text-foreground font-bold text-base">
-            {hasTimedCommitment
-              ? commitmentLabel(todayCheckIn.commitmentType)
-              : 'Checked in for today'}
-          </Text>
-        </View>
-
-        {/* Committed addiction names */}
-        {committedNames.length > 0 && (
-          <View className="items-center">
-            <Text className="text-muted-foreground text-xs">
-              {committedNames.join(' · ')}
-            </Text>
-          </View>
-        )}
-
-        {/* Live countdown — large, front and center */}
-        {hasTimedCommitment && commitmentActive && remainingMs != null && (
-          <View className="items-center py-3">
-            <Text style={{ color: accentText }} className="font-bold text-4xl tracking-wider">
-              {formatCountdown(remainingMs)}
-            </Text>
-            <Text className="text-muted-foreground text-xs mt-1">remaining</Text>
-          </View>
-        )}
-
-        {/* Commitment expired */}
-        {hasTimedCommitment && !commitmentActive && (
-          <View className="items-center py-2">
-            <Text className="text-muted-foreground text-sm">
-              Commitment complete — well done.
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Lower area — per-challenge TODOs + actions */}
-      <View className="bg-card px-5 pb-4 pt-3 gap-3">
-        {/* Per-challenge checkboxes */}
-        {todoLines.length > 0 && (
-          <View className="gap-2">
-            {todoLines.map((line, i) => {
-              const done = todosCompleted[i] ?? false;
-              return (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => toggleTodoItem(i)}
-                  activeOpacity={0.7}
-                  className="flex-row items-start gap-3 bg-muted rounded-xl p-3"
-                >
-                  <View
-                    className={`w-5 h-5 rounded border mt-0.5 items-center justify-center ${
-                      done ? 'bg-primary border-primary' : 'border-border'
-                    }`}
-                  >
-                    {done && <Check size={12} color="#fff" strokeWidth={3} />}
-                  </View>
-                  <Text
-                    className={`flex-1 text-sm ${
-                      done ? 'text-muted-foreground line-through' : 'text-foreground'
-                    }`}
-                  >
-                    {line}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Reset commitment */}
-        {!confirmReset ? (
-          <TouchableOpacity
-            onPress={() => setConfirmReset(true)}
-            activeOpacity={0.7}
-            className="self-center py-1"
-          >
-            <Text className="text-muted-foreground text-xs">
-              Reset and start over
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <View className="flex-row items-center justify-center gap-4 py-1">
-            <Text className="text-sm text-foreground">Start a new check-in?</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setConfirmReset(false);
-                onReset();
-              }}
-              activeOpacity={0.7}
-              className="bg-destructive/20 rounded-lg px-3 py-1.5"
-            >
-              <Text className="text-destructive text-sm font-semibold">Yes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setConfirmReset(false)}
-              activeOpacity={0.7}
-              className="bg-muted rounded-lg px-3 py-1.5"
-            >
-              <Text className="text-muted-foreground text-sm font-semibold">No</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-}
+// CheckedInCard and LastCommitmentInfo extracted to @/components/CheckedInCard.tsx
 
 const styles = StyleSheet.create({
   cardWithImage: {

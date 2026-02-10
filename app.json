@@ -1,22 +1,22 @@
 {
   "expo": {
-    "name": "LifeTrack Pro",
-    "slug": "lifetrack-pro-clean",
-    "version": "2.0.0",
+    "name": "Just For Today",
+    "slug": "just-for-today",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "lifetrackpro",
+    "scheme": "justfortoday",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mennyg19.lifetrackpro",
+      "bundleIdentifier": "com.gurumedia.JustForToday",
       "infoPlist": {
-        "NSHealthShareUsageDescription": "LifeTrack Pro needs access to your step count data to track your daily activity.",
-        "NSHealthUpdateUsageDescription": "LifeTrack Pro needs permission to update your health data.",
+        "NSHealthShareUsageDescription": "Just For Today needs access to your step count data to track your daily activity.",
+        "NSHealthUpdateUsageDescription": "Just For Today needs permission to update your health data.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSUbiquitousContainers": {
-          "iCloud.com.mennyg19.lifetrackpro": {}
+          "iCloud.com.gurumedia.JustForToday": {}
         }
       },
       "usesIcloudStorage": true
@@ -28,7 +28,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.mennyg19.lifetrackpro"
+      "package": "com.gurumedia.JustForToday"
     },
     "web": {
       "bundler": "metro",
@@ -52,7 +52,13 @@
       [
         "@oleg_svetlichnyi/expo-icloud-storage",
         {
-          "icloudContainerIdentifier": "iCloud.com.mennyg19.lifetrackpro"
+          "icloudContainerIdentifier": "iCloud.com.gurumedia.JustForToday"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Just For Today to protect your private entries with Face ID."
         }
       ],
       "expo-font",
@@ -61,7 +67,7 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "LifeTrack Pro needs access to your contacts so you can save trusted people to call during difficult moments."
+          "contactsPermission": "Just For Today needs access to your contacts so you can save trusted people to call during difficult moments."
         }
       ]
     ],
@@ -70,16 +76,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "86c6804e-82ed-489e-bd9a-cbc01330fa56"
-      }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/86c6804e-82ed-489e-bd9a-cbc01330fa56"
+      "router": {}
     }
   }
 }

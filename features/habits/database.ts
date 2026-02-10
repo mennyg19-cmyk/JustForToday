@@ -99,12 +99,15 @@ export async function getHabits(): Promise<Habit[]> {
     tracking_start_date: string | null;
   }>('SELECT * FROM habits ORDER BY order_index ASC, created_at ASC');
 
-  // Get all habit history
-  const historyRows = await db.getAllAsync<{
-    habit_id: string;
-    date: string;
-    completed: number;
-  }>('SELECT * FROM habit_history');
+  // Get habit history — only for existing habits
+  const habitIds = habitRows.map((h) => h.id);
+  const historyRows = habitIds.length > 0
+    ? await db.getAllAsync<{
+        habit_id: string;
+        date: string;
+        completed: number;
+      }>(`SELECT * FROM habit_history WHERE habit_id IN (${habitIds.map(() => '?').join(',')})`, habitIds)
+    : [];
 
   // Group history by habit
   const historyByHabit: Record<string, Record<string, boolean>> = {};
@@ -276,6 +279,7 @@ export async function deleteHabit(habitId: string): Promise<void> {
     return;
   }
   const db = await getDatabase();
+  await db.runAsync('DELETE FROM habit_history WHERE habit_id = ?', [habitId]);
   await db.runAsync('DELETE FROM habits WHERE id = ?', [habitId]);
   triggerSync();
 }

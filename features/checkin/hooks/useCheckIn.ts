@@ -8,18 +8,29 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { AppState } from 'react-native';
 import type { DailyCheckIn, CommitmentType } from '@/lib/database/schema';
 import { getCheckInForDate, saveCheckIn, updateTodoCompleted, getMostRecentCheckIn, deleteCheckIn } from '../database';
 import { buildTodoText } from '@/lib/commitment';
 import { getTodayKey } from '@/utils/date';
+import { logger } from '@/lib/logger';
 
 export function useCheckIn() {
   const [todayCheckIn, setTodayCheckIn] = useState<DailyCheckIn | null>(null);
   /** Most recent check-in regardless of date — used for "last commitment" display. */
   const [lastCheckIn, setLastCheckIn] = useState<DailyCheckIn | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const todayKey = getTodayKey();
+  // Recompute todayKey when app comes to foreground (handles midnight crossover)
+  const [todayKey, setTodayKey] = useState(() => getTodayKey());
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        const key = getTodayKey();
+        setTodayKey((prev) => (prev !== key ? key : prev));
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   /** Fetch today's check-in and the most recent check-in from the database. */
   const refresh = useCallback(async () => {
@@ -31,7 +42,7 @@ export function useCheckIn() {
       setTodayCheckIn(checkIn);
       setLastCheckIn(recent);
     } catch (err) {
-      console.error('Failed to load check-in:', err);
+      logger.error('Failed to load check-in:', err);
     } finally {
       setLoading(false);
     }

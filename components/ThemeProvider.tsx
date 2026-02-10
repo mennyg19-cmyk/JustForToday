@@ -4,6 +4,7 @@ import { View, useColorScheme as useNativeColorScheme } from 'react-native';
 import { lightTheme, darkTheme } from '../theme';
 import { getThemeMode, ThemeMode } from '@/lib/settings';
 import { ThemeStyleProvider } from '@/lib/ThemeContext';
+import { logger } from '@/lib/logger';
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -29,7 +30,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         }
         setLoaded(true);
       } catch (err) {
-        console.error('Failed to load theme:', err);
+        logger.error('Failed to load theme:', err);
         setLoaded(true);
       }
     };

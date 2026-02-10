@@ -13,8 +13,6 @@ export function useIconColors() {
     muted: isDark ? '#B4AA96' : '#807869',
     primary: isDark ? '#D4B26A' : '#B48C3C',
     primaryForeground: isDark ? '#1E1910' : '#FFFFFF',
-    secondary: isDark ? '#807869' : '#A89A89',
-    secondaryForeground: isDark ? '#F0EBE1' : '#241E18',
     accent: isDark ? '#E6E0C8' : '#64511A',
     success: isDark ? '#8CB86A' : '#6A9A48',   // muted green, not neon
     destructive: isDark ? '#DC5050' : '#C83232',

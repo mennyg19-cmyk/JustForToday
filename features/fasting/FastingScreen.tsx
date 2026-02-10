@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   Alert,
   TouchableOpacity,
@@ -13,6 +12,8 @@ import { Timer, Pencil, Trash2 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ModalButton, ModalButtonRow } from '@/components/ModalContent';
+import { LoadingView } from '@/components/common/LoadingView';
+import { ErrorView } from '@/components/common/ErrorView';
 import { useIconColors } from '@/lib/iconTheme';
 import { useFasting } from './hooks/useFasting';
 import {
@@ -21,13 +22,8 @@ import {
   formatDurationSeconds,
   formatDateTimeDisplay,
   formatTimeDisplay,
-  minutesSince,
   minutesBetween,
   secondsSince,
-  hoursSince,
-  hoursBetween,
-  getTodayParts,
-  isOnDate,
 } from './utils';
 import type { FastingSession } from '@/lib/database/schema';
 import { ModalSurface } from '@/components/ModalSurface';
@@ -84,23 +80,27 @@ export function FastingScreen() {
   const elapsedSeconds = activeSession ? secondsSince(activeSession.startAt) : 0;
   const elapsedFormatted = formatDurationSeconds(Math.max(0, elapsedSeconds));
 
-  const todayParts = useMemo(() => getTodayParts(), []);
   const todayHours = useMemo(() => {
+    const now = Date.now();
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = today.getMonth();
+    const d = today.getDate();
+    const dayStart = new Date(y, m, d).getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
     let total = 0;
     for (const s of sessions) {
-      if (s.endAt) {
-        const end = new Date(s.endAt);
-        if (isOnDate(s.endAt, todayParts.year, todayParts.month, todayParts.day)) {
-          total += hoursBetween(s.startAt, s.endAt);
-        }
-      } else {
-        if (isOnDate(s.startAt, todayParts.year, todayParts.month, todayParts.day)) {
-          total += hoursSince(s.startAt);
-        }
+      const start = new Date(s.startAt).getTime();
+      const end = s.endAt ? new Date(s.endAt).getTime() : now;
+      const overlapStart = Math.max(start, dayStart);
+      const overlapEnd = Math.min(end, dayEnd);
+      if (overlapEnd > overlapStart) {
+        total += (overlapEnd - overlapStart) / (1000 * 60 * 60);
       }
     }
     return total;
-  }, [sessions, todayParts, tick]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, tick]);
 
   const handleStartFast = useCallback(async () => {
     setSubmitting(true);
@@ -156,28 +156,19 @@ export function FastingScreen() {
     }
   }, [sessionToDelete, deleteSession]);
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color={iconColors.primary} />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <LoadingView />;
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Fasting" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
-          <Text className="text-muted-foreground text-center">{error}</Text>
-        </View>
+        <ErrorView message={error} onRetry={refresh} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Fasting" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView

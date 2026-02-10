@@ -1,41 +1,34 @@
-import { AppState, AppStateStatus } from 'react-native';
-import * as uploadModule from './icloud';
+/**
+ * Sync manager — orchestrates cloud sync operations.
+ *
+ * All sync is opt-in: nothing happens unless the user explicitly enables
+ * cloud sync in Settings. The manager delegates to cloudProvider.ts which
+ * dispatches to the right platform implementation (iCloud / SAF).
+ */
+
+import { AppState, type AppStateStatus, type NativeEventSubscription } from 'react-native';
 import { isSQLiteAvailable } from '../database/db';
+import { getCloudSyncEnabled } from '../settings/database';
+import * as cloudProvider from './cloudProvider';
+import { logger } from '../logger';
 
 let syncInProgress = false;
-let syncTimeout: NodeJS.Timeout | null = null;
+let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+let appStateSubscription: NativeEventSubscription | null = null;
 
-/**
- * Sync database to iCloud (no-op when SQLite is not available, e.g. Expo Go)
- */
-async function syncToICloud(immediate = false): Promise<void> {
-  if (!(await isSQLiteAvailable())) {
-    return;
-  }
-  if (syncInProgress) {
-    return;
-  }
+/** Cached enabled flag — refreshed on every initializeSync / enableSync call. */
+let syncEnabled = false;
 
-  if (!immediate && syncTimeout) {
-    // Debounce: wait a bit before syncing
-    clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(() => {
-      performSync();
-    }, 2000); // Wait 2 seconds after last change
-    return;
-  }
-
-  await performSync();
-}
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
 async function performSync(): Promise<void> {
   syncInProgress = true;
   try {
-    // Ensure database is closed before syncing
-    // (SQLite locks the file while open)
-    await uploadModule.uploadDatabaseToICloud();
+    await cloudProvider.uploadDatabase();
   } catch (error) {
-    console.error('Sync failed:', error);
+    logger.error('Sync failed:', error);
   } finally {
     syncInProgress = false;
     if (syncTimeout) {
@@ -45,60 +38,122 @@ async function performSync(): Promise<void> {
   }
 }
 
-/**
- * Initialize sync manager (no-op when SQLite is not available, e.g. Expo Go)
- */
-export async function initializeSync(): Promise<void> {
-  if (!(await isSQLiteAvailable())) {
+async function syncToCloud(immediate = false): Promise<void> {
+  if (!syncEnabled) return;
+  if (!(await isSQLiteAvailable())) return;
+  if (syncInProgress) return;
+
+  if (!immediate) {
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+      performSync();
+    }, 2000);
     return;
   }
-  try {
-    const downloaded = await uploadModule.downloadDatabaseFromICloud();
-    if (downloaded) {
-      console.log('Database updated from iCloud');
-    }
-  } catch (error) {
-    console.error('Failed to initialize sync:', error);
-  }
 
-  AppState.addEventListener('change', handleAppStateChange);
+  await performSync();
 }
 
-/**
- * Handle app state changes
- * Sync when app goes to background
- */
 function handleAppStateChange(nextAppState: AppStateStatus): void {
   if (nextAppState === 'background' || nextAppState === 'inactive') {
-    // Sync when app goes to background
-    syncToICloud(true).catch((error) => {
-      console.error('Background sync failed:', error);
+    syncToCloud(true).catch((error) => {
+      logger.error('Background sync failed:', error);
     });
   }
 }
 
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 /**
- * Trigger a sync (call after database mutations)
- * Debounced to avoid too frequent syncs
+ * Initialize sync manager — reads the enabled setting and, if sync is on,
+ * downloads the latest cloud database and subscribes to app-state changes.
+ *
+ * Safe to call at any time; no-ops when sync is disabled or SQLite is
+ * unavailable (Expo Go).
+ */
+export async function initializeSync(): Promise<void> {
+  syncEnabled = await getCloudSyncEnabled();
+  if (!syncEnabled) return;
+  if (!(await isSQLiteAvailable())) return;
+
+  try {
+    const downloaded = await cloudProvider.downloadDatabase();
+    if (downloaded) {
+      logger.info('Database updated from cloud');
+    }
+  } catch (error) {
+    logger.error('Failed to initialize sync:', error);
+  }
+
+  // Subscribe to app-state changes (sync on background)
+  appStateSubscription?.remove();
+  appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+}
+
+/**
+ * Called from Settings when the user turns sync ON.
+ */
+export async function enableSync(): Promise<void> {
+  syncEnabled = true;
+
+  // Attempt an initial download + start background listener
+  try {
+    if (await isSQLiteAvailable()) {
+      const downloaded = await cloudProvider.downloadDatabase();
+      if (downloaded) {
+        logger.info('Database updated from cloud');
+      }
+    }
+  } catch (error) {
+    logger.error('Enable sync — download failed:', error);
+  }
+
+  appStateSubscription?.remove();
+  appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+}
+
+/**
+ * Called from Settings when the user turns sync OFF.
+ */
+export function disableSync(): void {
+  syncEnabled = false;
+  cleanupSync();
+}
+
+/**
+ * Trigger a debounced sync (call after database mutations).
+ * No-op when sync is disabled.
  */
 export function triggerSync(): void {
-  syncToICloud(false).catch((error) => {
-    console.error('Sync trigger failed:', error);
+  if (!syncEnabled) return;
+  syncToCloud(false).catch((error) => {
+    logger.error('Sync trigger failed:', error);
   });
 }
 
 /**
- * Force an immediate sync
+ * Force an immediate sync. Returns only after the upload completes.
  */
 export async function forceSync(): Promise<void> {
-  await syncToICloud(true);
+  // Temporarily treat as enabled for this single call so the user can
+  // test sync from Settings even if the cached flag is stale.
+  const wasEnabled = syncEnabled;
+  syncEnabled = true;
+  try {
+    await syncToCloud(true);
+  } finally {
+    syncEnabled = wasEnabled;
+  }
 }
 
 /**
- * Cleanup sync manager
+ * Tear down listeners and timers.
  */
 export function cleanupSync(): void {
-  AppState.removeEventListener('change', handleAppStateChange);
+  appStateSubscription?.remove();
+  appStateSubscription = null;
   if (syncTimeout) {
     clearTimeout(syncTimeout);
     syncTimeout = null;

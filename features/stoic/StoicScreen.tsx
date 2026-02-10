@@ -36,6 +36,8 @@ import {
 } from '@/lib/settings/database';
 import { formatDateKey, formatDateDisplay } from '@/utils/date';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { CARD_MB as cardClass } from '@/components/cardStyles';
+import { logger } from '@/lib/logger';
 
 const DAY_KEYS: { key: StoicDayKey; label: string }[] = [
   { key: 'mon', label: 'Monday' },
@@ -55,11 +57,6 @@ function getTodayDayKey(): StoicDayKey {
   const day = new Date().getDay();
   if (day === 0) return 'review';
   return DAY_KEYS[day - 1].key;
-}
-
-function getDayKeyOrder(dayKey: StoicDayKey): number {
-  const i = DAY_KEYS.findIndex((d) => d.key === dayKey);
-  return i >= 0 ? i : 6;
 }
 
 const PART_ORDER: StoicPart[] = ['desire', 'action', 'assent'];
@@ -127,7 +124,7 @@ export function StoicScreen() {
       setEntries(list);
       setHistory(hist);
     } catch (e) {
-      console.error('Stoic load failed:', e);
+      logger.error('Stoic load failed:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -180,7 +177,7 @@ export function StoicScreen() {
         const hist = await getStoicEntriesHistory();
         setHistory(hist);
       } catch (e) {
-        console.error('Stoic save failed:', e);
+        logger.error('Stoic save failed:', e);
       } finally {
         setSaving(null);
       }
@@ -218,7 +215,6 @@ export function StoicScreen() {
     });
   }, [pickerDate, initCurrentWeek, loadWeek]);
 
-  const todayEntry = entries.find((e) => e.dayKey === todayKey);
   const reviewEntry = entries.find((e) => e.dayKey === 'review');
 
   const switchColors = useMemo(
@@ -243,10 +239,8 @@ export function StoicScreen() {
     [weekNumber, loadWeek]
   );
 
-  const cardClass = 'rounded-2xl p-4 bg-card border border-border mb-4';
-
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Stoic Handbook" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView

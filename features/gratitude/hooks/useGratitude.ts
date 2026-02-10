@@ -6,6 +6,7 @@ import {
   updateGratitudeEntry,
   deleteGratitudeEntry,
 } from '../database';
+import { logger } from '@/lib/logger';
 
 export function useGratitude() {
   const [entries, setEntries] = useState<GratitudeEntry[]>([]);
@@ -18,7 +19,7 @@ export function useGratitude() {
       const list = await getGratitudeEntries();
       setEntries(list);
     } catch (err) {
-      console.error('Failed to load gratitude:', err);
+      logger.error('Failed to load gratitude:', err);
       setError(err instanceof Error ? err.message : 'Failed to load gratitude');
     } finally {
       setLoading(false);

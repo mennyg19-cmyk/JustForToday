@@ -12,6 +12,7 @@ import {
   ModalButtonRow,
   ModalButton,
 } from '@/components/ModalContent';
+import { logger } from '@/lib/logger';
 
 interface HabitFormModalProps {
   visible: boolean;
@@ -39,7 +40,7 @@ export function HabitFormModal({ visible, onClose, onSubmit }: HabitFormModalPro
       setType('build');
       onClose();
     } catch (err) {
-      console.error('Failed to add habit:', err);
+      logger.error('Failed to add habit:', err);
     } finally {
       setSubmitting(false);
     }

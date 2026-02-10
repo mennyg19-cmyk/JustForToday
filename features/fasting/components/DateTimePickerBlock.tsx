@@ -51,12 +51,6 @@ export function DateTimePickerBlock({
     setShowPicker(false);
   };
 
-  const isFuture = (date: Date) => {
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
-    return date > now;
-  };
-
   return (
     <View className="mb-4">
       <View className="flex-row items-center gap-2 mb-2">

@@ -5,6 +5,8 @@ const DB_NAME = 'lifetrack.db';
 let dbInstance: import('expo-sqlite').SQLiteDatabase | null = null;
 let sqliteAvailable: boolean | null = null;
 let migrationsVerified = false;
+/** Shared promise so concurrent getDatabase() callers don't run migrations in parallel. */
+let initPromise: Promise<import('expo-sqlite').SQLiteDatabase> | null = null;
 
 /**
  * Check if the native Expo SQLite module is available.
@@ -26,40 +28,48 @@ export async function isSQLiteAvailable(): Promise<boolean> {
 }
 
 /**
+ * Internal initializer — opens the database and runs migrations exactly once.
+ * Callers share a single promise so concurrent access is safe.
+ */
+async function initializeDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
+  const available = await isSQLiteAvailable();
+  if (!available) {
+    throw new Error('EXPO_GO_NO_SQLITE');
+  }
+
+  if (!dbInstance) {
+    const SQLite = await import('expo-sqlite');
+    dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
+  }
+
+  await runMigrations(dbInstance);
+  migrationsVerified = true;
+  return dbInstance;
+}
+
+/**
  * Get or create the database instance.
- * Runs migrations automatically on first access, and re-checks if a
- * previous migration attempt failed (so we don't cache broken state).
+ * Runs migrations automatically on first access. Concurrent callers share
+ * a single init promise so migrations never run in parallel (which would
+ * cause a UNIQUE-constraint error on the _migrations table).
  * Throws if SQLite is not available (e.g. in Expo Go).
  */
-export async function getDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
-  try {
-    const available = await isSQLiteAvailable();
-    if (!available) {
-      throw new Error('EXPO_GO_NO_SQLITE');
-    }
-
-    if (!dbInstance) {
-      const SQLite = await import('expo-sqlite');
-      dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
-    }
-
-    // Always run migrations if they haven't been verified in this JS session.
-    // runMigrations is idempotent — it skips already-applied versions.
-    if (!migrationsVerified) {
-      await runMigrations(dbInstance);
-      migrationsVerified = true;
-    }
-
-    return dbInstance;
-  } catch (error) {
-    console.error('Database initialization failed:', error);
-    // Clear failed instance so next attempt can retry
-    dbInstance = null;
-    migrationsVerified = false;
-    throw new Error(
-      `Failed to initialize database: ${error instanceof Error ? error.message : 'Unknown error'}. Please try restarting the app.`
-    );
+export function getDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
+  // Fast path — already fully initialised.
+  if (migrationsVerified && dbInstance) {
+    return Promise.resolve(dbInstance);
   }
+
+  // Ensure only one initialisation is in flight at a time.
+  if (!initPromise) {
+    initPromise = initializeDatabase().catch((err) => {
+      // Allow retry on next call.
+      initPromise = null;
+      throw err;
+    });
+  }
+
+  return initPromise;
 }
 
 /**
@@ -71,6 +81,7 @@ export async function closeDatabase(): Promise<void> {
     await dbInstance.closeAsync();
     dbInstance = null;
     migrationsVerified = false;
+    initPromise = null;
   }
 }
 

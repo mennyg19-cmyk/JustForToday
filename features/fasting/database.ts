@@ -24,8 +24,15 @@ export async function getFastingSessions(): Promise<FastingSession[]> {
 }
 
 export async function getActiveFastingSession(): Promise<FastingSession | null> {
-  const sessions = await getFastingSessions();
-  return sessions.find((s) => s.endAt === null) ?? null;
+  if (!(await isSQLiteAvailable())) {
+    const sessions = await asyncFasting.getFastingSessionsAsync();
+    return sessions.find((s) => s.endAt === null) ?? null;
+  }
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ id: string; start_at: string; end_at: string | null }>(
+    'SELECT id, start_at, end_at FROM fasting_sessions WHERE end_at IS NULL LIMIT 1'
+  );
+  return row ? rowToSession(row) : null;
 }
 
 export async function startFastingSession(): Promise<FastingSession> {

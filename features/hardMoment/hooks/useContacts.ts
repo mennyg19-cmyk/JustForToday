@@ -13,6 +13,7 @@ import {
   saveTrustedContact,
   deleteTrustedContact,
 } from '../database';
+import { logger } from '@/lib/logger';
 
 const MAX_CONTACTS = 5;
 
@@ -25,7 +26,7 @@ export function useContacts() {
       const list = await getTrustedContacts();
       setContacts(list);
     } catch (err) {
-      console.error('Failed to load trusted contacts:', err);
+      logger.error('Failed to load trusted contacts:', err);
     } finally {
       setLoading(false);
     }
@@ -43,17 +44,27 @@ export function useContacts() {
     async (contact: TrustedContact): Promise<boolean> => {
       if (contacts.length >= MAX_CONTACTS) return false;
 
-      await saveTrustedContact(contact);
-      setContacts((prev) => [...prev, contact]);
-      return true;
+      try {
+        await saveTrustedContact(contact);
+        // Only update local state after successful persist
+        setContacts((prev) => [...prev, contact]);
+        return true;
+      } catch (err) {
+        logger.error('Failed to save trusted contact:', err);
+        return false;
+      }
     },
     [contacts.length]
   );
 
   /** Remove a contact by ID. */
   const removeContact = useCallback(async (id: string) => {
-    await deleteTrustedContact(id);
-    setContacts((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await deleteTrustedContact(id);
+      setContacts((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      logger.error('Failed to delete trusted contact:', err);
+    }
   }, []);
 
   return {

@@ -7,6 +7,7 @@ import type {
 } from '@/lib/database/schema';
 import type { ThemeMode } from '@/lib/settings/database';
 import { DEFAULT_DASHBOARD_ORDER } from '@/lib/modules';
+import { DEFAULT_GOALS } from '@/lib/constants';
 
 const PREFIX = 'lifetrack_';
 const KEYS = {
@@ -26,6 +27,11 @@ const KEYS = {
   STOIC_START_DATE: PREFIX + 'stoic_start_date',
   PROFILE: PREFIX + 'user_profile',
   ONBOARDING_COMPLETED: PREFIX + 'onboarding_completed',
+  HABITS_SHOW_METRICS: PREFIX + 'habits_show_metrics',
+  CLOUD_SYNC_ENABLED: PREFIX + 'cloud_sync_enabled',
+  SAF_FOLDER_URI: PREFIX + 'saf_folder_uri',
+  COMMITMENT_PROMPT_DISMISSED_DATE: PREFIX + 'commitment_prompt_dismissed_date',
+  PRIVACY_LOCK_ENABLED: PREFIX + 'privacy_lock_enabled',
 };
 
 async function getJson<T>(key: string, defaultValue: T): Promise<T> {
@@ -43,21 +49,12 @@ async function setJson<T>(key: string, value: T): Promise<void> {
 }
 
 export async function getThemeModeAsync(): Promise<ThemeMode> {
-  return getJson<ThemeMode>(KEYS.THEME_MODE, 'dark');
+  return getJson<ThemeMode>(KEYS.THEME_MODE, 'system');
 }
 
 export async function saveThemeModeAsync(mode: ThemeMode): Promise<void> {
   await setJson(KEYS.THEME_MODE, mode);
 }
-
-const DEFAULT_GOALS: AppGoals = {
-  habitsGoal: 0,
-  stepsGoal: 10000,
-  workoutsGoal: 1,
-  fastingHoursGoal: 16,
-  inventoriesPerDayGoal: 2,
-  gratitudesPerDayGoal: 1,
-};
 
 export async function getGoalsAsync(): Promise<AppGoals> {
   const raw = await getJson<Partial<AppGoals>>(KEYS.GOALS, {});
@@ -74,6 +71,7 @@ const DEFAULT_VISIBILITY: AppVisibility = {
   daily_renewal: true,
   fasting: true,
   inventory: true,
+  step10: true,
   steps: true,
   workouts: true,
   gratitude: true,
@@ -171,7 +169,7 @@ export async function saveDashboardGroupedAsync(grouped: boolean): Promise<void>
 }
 
 export async function getCompactViewModeAsync(): Promise<boolean> {
-  return getJson<boolean>(KEYS.COMPACT_VIEW, true);
+  return getJson<boolean>(KEYS.COMPACT_VIEW, false);
 }
 
 export async function setCompactViewModeAsync(compact: boolean): Promise<void> {
@@ -214,9 +212,57 @@ export async function saveUserProfileAsync(profile: UserProfile): Promise<void> 
   await setJson(KEYS.PROFILE, profile);
 }
 
+// -- Habits Metrics --
+
+export async function getHabitsShowMetricsAsync(): Promise<boolean> {
+  return getJson<boolean>(KEYS.HABITS_SHOW_METRICS, true);
+}
+
+export async function setHabitsShowMetricsAsync(show: boolean): Promise<void> {
+  await setJson(KEYS.HABITS_SHOW_METRICS, show);
+}
+
+// -- Cloud Sync --
+
+export async function getCloudSyncEnabledAsync(): Promise<boolean> {
+  return getJson<boolean>(KEYS.CLOUD_SYNC_ENABLED, false);
+}
+
+export async function setCloudSyncEnabledAsync(enabled: boolean): Promise<void> {
+  await setJson(KEYS.CLOUD_SYNC_ENABLED, enabled);
+}
+
+export async function getSafFolderUriAsync(): Promise<string | null> {
+  return getJson<string | null>(KEYS.SAF_FOLDER_URI, null);
+}
+
+export async function setSafFolderUriAsync(uri: string | null): Promise<void> {
+  await setJson(KEYS.SAF_FOLDER_URI, uri);
+}
+
+// -- Daily Commitment Prompt --
+
+export async function getCommitmentPromptDismissedDateAsync(): Promise<string | null> {
+  return getJson<string | null>(KEYS.COMMITMENT_PROMPT_DISMISSED_DATE, null);
+}
+
+export async function setCommitmentPromptDismissedDateAsync(date: string): Promise<void> {
+  await setJson(KEYS.COMMITMENT_PROMPT_DISMISSED_DATE, date);
+}
+
+// -- Privacy Lock --
+
+export async function getPrivacyLockEnabledAsync(): Promise<boolean> {
+  return getJson<boolean>(KEYS.PRIVACY_LOCK_ENABLED, false);
+}
+
+export async function setPrivacyLockEnabledAsync(enabled: boolean): Promise<void> {
+  await setJson(KEYS.PRIVACY_LOCK_ENABLED, enabled);
+}
+
 // -- Onboarding --
 
-export async function hasCompletedOnboardingAsync(): Promise<boolean> {
+export async function getOnboardingCompletedAsync(): Promise<boolean> {
   return getJson<boolean>(KEYS.ONBOARDING_COMPLETED, false);
 }
 

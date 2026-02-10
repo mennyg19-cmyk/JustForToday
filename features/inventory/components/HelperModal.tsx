@@ -3,8 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { ModalSurface } from '@/components/ModalSurface';
 import { ModalTitle } from '@/components/ModalContent';
-import type { HelperType } from '@/lib/step10Data';
-import { HELPER_CONTENT } from '@/lib/step10Data';
+import type { HelperType } from '../step10Data';
+import { HELPER_CONTENT } from '../step10Data';
 import { useIconColors } from '@/lib/iconTheme';
 
 interface HelperModalProps {

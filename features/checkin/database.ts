@@ -11,7 +11,6 @@ import { getDatabase, isSQLiteAvailable } from '@/lib/database/db';
 import type {
   DailyCheckIn,
   DailyCheckInRow,
-  CommitmentType,
 } from '@/lib/database/schema';
 import * as asyncCheckin from '@/lib/database/asyncFallback/checkin';
 import { triggerSync } from '@/lib/sync';

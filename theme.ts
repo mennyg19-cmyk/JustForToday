@@ -56,12 +56,6 @@ export const progressCardColors = {
   dark: '#D4B26A',
 };
 
-/** @deprecated Use progressCardColors. Kept so existing imports don't break. */
-export const progressCardGradient = {
-  light: ['#B48C3C', '#B48C3C'] as const,
-  dark: ['#D4B26A', '#D4B26A'] as const,
-};
-
 export const darkTheme = vars({
   '--radius': '14',
   '--background': '22 18 12',           // warm charcoal (not pure black)

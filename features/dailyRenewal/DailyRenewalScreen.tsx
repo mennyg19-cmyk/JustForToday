@@ -16,15 +16,16 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RotateCcw, AlertCircle, CheckCircle } from 'lucide-react-native';
+import { RotateCcw, CheckCircle } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LoadingView } from '@/components/common/LoadingView';
+import { ErrorView } from '@/components/common/ErrorView';
 import { ModalSurface } from '@/components/ModalSurface';
 import { ModalButtonRow, ModalButton } from '@/components/ModalContent';
 import { useSobriety } from '@/features/sobriety/hooks/useSobriety';
@@ -71,7 +72,10 @@ function getProgress(renewalIso: string, nowMs: number, durationMs: number): num
 /** "until tomorrow at 10:45am" from a given duration. */
 function getExpiryLabel(nowMs: number, durationMs: number): string {
   const expiry = new Date(nowMs + durationMs);
-  const isToday = expiry.getDate() === new Date(nowMs).getDate();
+  const nowDate = new Date(nowMs);
+  const isToday = expiry.getDate() === nowDate.getDate() &&
+    expiry.getMonth() === nowDate.getMonth() &&
+    expiry.getFullYear() === nowDate.getFullYear();
   const h = expiry.getHours();
   const m = expiry.getMinutes();
   const am = h < 12 ? 'am' : 'pm';
@@ -250,26 +254,13 @@ export function DailyRenewalScreen() {
     }
   }, [selectedCounter, renewDailyCommitment]);
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <LoadingView />;
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Daily Renewal" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
-        <View className="flex-1 items-center justify-center px-6">
-          <AlertCircle className="text-destructive mb-4" size={48} />
-          <Text className="text-lg font-bold text-foreground mb-2">Failed to load</Text>
-          <Text className="text-muted-foreground text-center">{error}</Text>
-          <TouchableOpacity onPress={refresh} className="mt-4 px-4 py-2 bg-primary rounded-lg">
-            <Text className="text-primary-foreground font-semibold">Retry</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorView message={error} onRetry={refresh} />
       </SafeAreaView>
     );
   }
@@ -279,7 +270,7 @@ export function DailyRenewalScreen() {
   const selectedDurationLabel = selectedDurationMs === TWENTY_FOUR_HOURS_MS ? '24-hour' : '12-hour';
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Daily Renewal" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView

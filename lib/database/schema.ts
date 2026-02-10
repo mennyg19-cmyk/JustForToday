@@ -208,6 +208,7 @@ export interface AppVisibility {
   daily_renewal: boolean;
   fasting: boolean;
   inventory: boolean;
+  step10: boolean;
   steps: boolean;
   workouts: boolean;
   gratitude: boolean;

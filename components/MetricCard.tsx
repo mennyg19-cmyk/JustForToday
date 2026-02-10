@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-
-const CARD_CLASS = 'rounded-2xl p-4 bg-card border border-border';
+import { CARD as CARD_CLASS } from '@/components/cardStyles';
 
 interface MetricCardProps {
   /** Optional icon (e.g. Flame, Footprints) */

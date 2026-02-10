@@ -32,11 +32,5 @@ export const THEME_OPTIONS: ThemeOption[] = [
   { mode: 'system', label: 'System', icon: Smartphone },
 ];
 
-export const DEFAULT_GOALS = {
-  habitsGoal: 0,
-  stepsGoal: 10000,
-  workoutsGoal: 1,
-  fastingHoursGoal: 16,
-  inventoriesPerDayGoal: 2,
-  gratitudesPerDayGoal: 1,
-} as const;
+// Re-export from canonical location so existing feature imports still work
+export { DEFAULT_GOALS } from '@/lib/constants';

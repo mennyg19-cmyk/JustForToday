@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,21 +20,14 @@ import {
   ModalTitle,
 } from '@/components/ModalContent';
 import { ModalSurface } from '@/components/ModalSurface';
+import { LoadingView } from '@/components/common/LoadingView';
+import { ErrorView } from '@/components/common/ErrorView';
 import { useIconColors } from '@/lib/iconTheme';
+import { isToday } from '@/utils/date';
 import { useGratitude } from './hooks/useGratitude';
 import { checkSimilarGratitude } from './similarity';
 import type { GratitudeEntry } from '@/lib/database/schema';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-function isToday(isoDate: string): boolean {
-  const d = new Date(isoDate);
-  const today = new Date();
-  return (
-    d.getUTCFullYear() === today.getUTCFullYear() &&
-    d.getUTCMonth() === today.getUTCMonth() &&
-    d.getUTCDate() === today.getUTCDate()
-  );
-}
 
 /** Single delete helper: remove entry and optionally run callback (e.g. clear form). */
 function useDeleteEntry(
@@ -178,28 +170,19 @@ export function GratitudeScreen() {
     performUpdate,
   ]);
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color={iconColors.primary} />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <LoadingView />;
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
-        <AppHeader title="Gratitude" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-foreground font-semibold mb-2">Failed to load</Text>
-          <Text className="text-muted-foreground text-center">{error}</Text>
-        </View>
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
+        <AppHeader title="Gratitude" rightSlot={<ThemeToggle />} />
+        <ErrorView message={error} onRetry={refresh} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Gratitude" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView
@@ -211,7 +194,7 @@ export function GratitudeScreen() {
       >
         <View className="mb-4">
           <Text className="text-sm text-muted-foreground">
-            Keep a running list of what you’re grateful for. Add one grattitude per day (no more than five)—it’s not a contest to write a long list in one go. The point is to be consistent and find the little things to be grateful for.
+            Keep a running list of what you’re grateful for. Add one gratitude per day (no more than five)—it’s not a contest to write a long list in one go. The point is to be consistent and find the little things to be grateful for.
           </Text>
         </View>
         {hasGratitudeToday && !showAddForm && (

@@ -2,11 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import type { InventoryEntry } from '@/lib/database/schema';
 import {
   getInventoryEntries,
-  getInventoryEntriesByType,
   createInventoryEntry,
   updateInventoryEntry,
   deleteInventoryEntry,
 } from '../database';
+import { logger } from '@/lib/logger';
 
 export function useInventory() {
   const [entries, setEntries] = useState<InventoryEntry[]>([]);
@@ -19,7 +19,7 @@ export function useInventory() {
       const list = await getInventoryEntries();
       setEntries(list);
     } catch (err) {
-      console.error('Failed to load inventory:', err);
+      logger.error('Failed to load inventory:', err);
       setError(err instanceof Error ? err.message : 'Failed to load inventory');
     } finally {
       setLoading(false);

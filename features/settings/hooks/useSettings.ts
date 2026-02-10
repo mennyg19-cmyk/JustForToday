@@ -14,7 +14,6 @@ import {
   getSectionVisibility,
   saveSectionVisibility,
   getModuleSettings,
-  saveModuleSettings,
   setModuleTrackingStartDate,
   setModuleCountInScore,
   getThemeMode,
@@ -31,6 +30,7 @@ import {
 } from '@/lib/settings';
 import { clearAllData, exportToFile, importFromFile } from '@/lib/dataManagement';
 import { SECTIONS, SECTION_GROUPS, DEFAULT_GOALS } from '../constants';
+import { logger } from '@/lib/logger';
 
 const DEFAULT_ORDER: (keyof AppVisibility)[] = SECTIONS.map((s) => s.id);
 
@@ -40,6 +40,7 @@ const DEFAULT_VISIBILITY: AppVisibility = {
   daily_renewal: true,
   fasting: true,
   inventory: true,
+  step10: true,
   steps: true,
   workouts: true,
   gratitude: true,
@@ -103,7 +104,7 @@ export function useSettings() {
       setGoals(result.g);
       setError(null);
     } catch (err) {
-      console.error('Failed to fetch settings:', err);
+      logger.error('Failed to fetch settings:', err);
       setError(err instanceof Error ? err.message : 'Failed to load settings');
       setVisibility((v) => v ?? DEFAULT_VISIBILITY);
       setSectionVisibilityState((s) => s ?? DEFAULT_SECTION_VISIBILITY);

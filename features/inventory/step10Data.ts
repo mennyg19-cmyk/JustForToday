@@ -1,3 +1,8 @@
+/**
+ * Step 10 inventory reference data — affects, defects, assets,
+ * defect-to-asset mappings, and helper content descriptions.
+ */
+
 export const AFFECTS = [
   'Self-esteem',
   'Security',

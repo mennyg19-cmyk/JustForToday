@@ -2,15 +2,17 @@ import React from 'react';
 import {
   Modal,
   View,
+  ScrollView,
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useThemeStyle } from '@/lib/ThemeContext';
 
-const overlayOpacity = 0.6;
+const overlayOpacity = 0.5;
 
 interface ModalSurfaceProps {
   visible: boolean;
@@ -23,12 +25,17 @@ interface ModalSurfaceProps {
   contentClassName?: string;
   /** When true, wrap content in KeyboardAvoidingView so submit buttons stay visible when keyboard is open */
   keyboardAvoid?: boolean;
+  /** When true, disable the built-in ScrollView (use when children manage their own scrolling) */
+  noScroll?: boolean;
 }
 
 /**
  * Shared modal wrapper that applies theme to the content View so all modals
  * get correct colors (opaque background, visible text, visible borders).
  * Tapping outside the modal content (on the overlay) closes the modal like Cancel.
+ *
+ * Content is wrapped in a ScrollView by default so modals automatically
+ * scroll when their content overflows. Pass noScroll={true} to disable.
  */
 export function ModalSurface({
   visible,
@@ -38,12 +45,13 @@ export function ModalSurface({
   animationType = 'fade',
   contentClassName = '',
   keyboardAvoid = true,
+  noScroll = false,
 }: ModalSurfaceProps) {
   const { themeStyle } = useThemeStyle();
 
   const contentWrapperStyle =
     position === 'bottom'
-      ? [styles.contentBase, styles.contentBottom, { maxHeight: '80%' }]
+      ? [styles.contentBase, styles.contentBottom, { maxHeight: '85%' as any }]
       : [styles.contentBase, styles.contentCenter];
 
   const handleOverlayPress = () => {
@@ -51,12 +59,25 @@ export function ModalSurface({
     onRequestClose();
   };
 
+  const inner = noScroll ? (
+    children
+  ) : (
+    <ScrollView
+      showsVerticalScrollIndicator
+      bounces={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ flexGrow: 1 }}
+    >
+      {children}
+    </ScrollView>
+  );
+
   const content = (
     <View
       style={themeStyle as any}
-      className={`bg-modal-content border-2 border-modal-border rounded-2xl overflow-hidden ${contentClassName}`.trim()}
+      className={`bg-modal-content border border-modal-border rounded-2xl overflow-hidden ${contentClassName}`.trim()}
     >
-      {children}
+      {inner}
     </View>
   );
 
@@ -82,10 +103,14 @@ export function ModalSurface({
               style={styles.keyboardAvoid}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
             >
-              {content}
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                {content}
+              </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
           ) : (
-            content
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              {content}
+            </TouchableWithoutFeedback>
           )}
         </View>
       </View>

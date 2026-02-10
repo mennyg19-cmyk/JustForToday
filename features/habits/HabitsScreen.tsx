@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Edit2, AlertCircle } from 'lucide-react-native';
+import { Plus, Edit2 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DraggableList } from '@/components/DraggableList';
@@ -11,7 +11,11 @@ import { HabitCard } from './components/HabitCard';
 import { HabitFormModal } from './components/HabitFormModal';
 import { HabitCalendar } from './components/HabitCalendar';
 import type { Habit } from './types';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { getTodayKey } from '@/utils/date';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { logger } from '@/lib/logger';
+import { getHabitsShowMetrics, setHabitsShowMetrics } from '@/lib/settings/database';
+import { useIconColors } from '@/lib/iconTheme';
 
 export function HabitsScreen() {
   const router = useRouter();
@@ -23,24 +27,42 @@ export function HabitsScreen() {
     error,
     toggleHabit,
     addHabit,
-    deleteHabit,
     updateHabit,
     reorderHabits,
-    completedCount,
-    totalCount,
-    allCompleted,
   } = useHabits();
 
+  const iconColors = useIconColors();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(true);
+
+  const switchColors = useMemo(
+    () => ({
+      trackColor: { false: iconColors.muted, true: iconColors.primary },
+      thumbColor: iconColors.primaryForeground,
+    }),
+    [iconColors]
+  );
+
+  // Re-read the setting every time the screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      getHabitsShowMetrics().then(setShowMetrics).catch(() => {});
+    }, [])
+  );
+
+  const handleToggleMetrics = useCallback(async (value: boolean) => {
+    setShowMetrics(value);
+    await setHabitsShowMetrics(value);
+  }, []);
 
   const handleToggle = useCallback(
     async (id: string) => {
       try {
         await toggleHabit(id);
       } catch (err) {
-        console.error('Failed to toggle habit:', err);
+        logger.error('Failed to toggle habit:', err);
       }
     },
     [toggleHabit]
@@ -58,7 +80,7 @@ export function HabitsScreen() {
       try {
         await reorderHabits(newOrder);
       } catch (err) {
-        console.error('Failed to reorder:', err);
+        logger.error('Failed to reorder:', err);
       }
     },
     [reorderHabits]
@@ -68,13 +90,19 @@ export function HabitsScreen() {
     async (habitId: string, date: string) => {
       try {
         await toggleHabit(habitId, date);
-        const updated = habits.find((h) => h.id === habitId);
-        if (updated) setSelectedHabit(updated);
+        // Optimistically update the selected habit's calendar view
+        setSelectedHabit((prev) => {
+          if (!prev || prev.id !== habitId) return prev;
+          const newHistory = { ...prev.history };
+          newHistory[date] = !newHistory[date];
+          const todayKey = getTodayKey();
+          return { ...prev, history: newHistory, completedToday: date === todayKey ? !prev.completedToday : prev.completedToday };
+        });
       } catch (err) {
-        console.error('Failed to toggle date:', err);
+        logger.error('Failed to toggle date:', err);
       }
     },
-    [habits, toggleHabit]
+    [toggleHabit]
   );
 
   const handleSaveHabitEdit = useCallback(
@@ -83,7 +111,7 @@ export function HabitsScreen() {
         const updated = await updateHabit(habitId, updates);
         setSelectedHabit(updated);
       } catch (err) {
-        console.error('Failed to save habit edit:', err);
+        logger.error('Failed to save habit edit:', err);
       }
     },
     [updateHabit]
@@ -95,7 +123,7 @@ export function HabitsScreen() {
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Habits" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
         <ErrorView message={error} />
       </SafeAreaView>
@@ -103,7 +131,7 @@ export function HabitsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <AppHeader title="Habits" rightSlot={<ThemeToggle />} onBackPress={backToAnalytics} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 128 }}>
@@ -115,6 +143,17 @@ export function HabitsScreen() {
             <Plus className="text-primary-foreground" size={24} />
             <Text className="text-primary-foreground font-bold text-lg">Add Habit</Text>
           </TouchableOpacity>
+
+          <View className="flex-row items-center gap-3 bg-card rounded-xl p-3 border border-border">
+            <Text className="text-sm text-muted-foreground flex-1">
+              Tracking helps us build and break habits. You can turn it off if you don't want to see it.
+            </Text>
+            <Switch
+              value={showMetrics}
+              onValueChange={handleToggleMetrics}
+              {...switchColors}
+            />
+          </View>
 
           {habits.length > 1 && (
             <TouchableOpacity
@@ -152,6 +191,7 @@ export function HabitsScreen() {
                     onToggle={handleToggle}
                     onPress={setSelectedHabit}
                     compact={false}
+                    showMetrics={showMetrics}
                   />
                 );
               }}
@@ -167,6 +207,7 @@ export function HabitsScreen() {
                   onToggle={handleToggle}
                   onPress={setSelectedHabit}
                   compact={true}
+                  showMetrics={showMetrics}
                 />
               ))}
             </View>
