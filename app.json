@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "justfortoday",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gurumedia.JustForToday",
@@ -19,7 +19,14 @@
           "iCloud.com.gurumedia.JustForToday": {}
         }
       },
-      "usesIcloudStorage": true
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
+      },
+      "usesIcloudStorage": true,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +35,20 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.gurumedia.JustForToday"
+      "package": "com.gurumedia.JustForToday",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ],
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -76,7 +96,13 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "8402ad68-7cda-4c74-ae22-041adc48e444"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8402ad68-7cda-4c74-ae22-041adc48e444"
     }
   }
 }

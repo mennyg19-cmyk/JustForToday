@@ -3,9 +3,9 @@
  * Passage text for morning and nightly is in bigBookText.ts.
  */
 
-import { MORNING_PASSAGE_TEXT, NIGHTLY_PASSAGE_TEXT } from './bigBookText';
+import { MORNING_PASSAGE_TEXT, NIGHTLY_PASSAGE_TEXT, FEAR_PASSAGE_TEXT } from './bigBookText';
 
-export type InventoryPassageId = 'morning' | 'nightly' | 'step10';
+export type InventoryPassageId = 'morning' | 'nightly' | 'step10' | 'fear';
 
 export interface BigBookPassage {
   id: InventoryPassageId;
@@ -47,6 +47,19 @@ const MORNING_HIGHLIGHTS = [
   'We are no longer running the show',
 ];
 
+/** Key phrases highlighted in fear passage (why we fear, what to do). */
+const FEAR_HIGHLIGHTS = [
+  'We reviewed our fears thoroughly',
+  'We put them on paper',
+  'self-reliance failed us',
+  'the basis of trusting and relying upon God',
+  'We trust infinite God rather than our finite selves',
+  'match calamity with serenity',
+  'faith means courage',
+  'We ask Him to remove our fear and direct our attention to what He would have us be',
+  'we commence to outgrow fear',
+];
+
 export const BIG_BOOK_PASSAGES: BigBookPassage[] = [
   {
     id: 'morning',
@@ -68,6 +81,13 @@ export const BIG_BOOK_PASSAGES: BigBookPassage[] = [
     reference: 'pp. 84–85',
     body: '',
     highlightPhrases: [],
+  },
+  {
+    id: 'fear',
+    title: 'Freedom from Fear',
+    reference: 'pp. 67–68',
+    body: FEAR_PASSAGE_TEXT,
+    highlightPhrases: FEAR_HIGHLIGHTS,
   },
 ];
 

@@ -8,8 +8,10 @@ import {
   MessageSquare,
   Lock,
   Shield,
+  Heart,
   ChevronRight,
 } from 'lucide-react-native';
+import type { ProgramType } from '@/lib/settings/database';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import type { TrustedContact } from '@/lib/database/schema';
 import type { GroundingReading } from '@/lib/groundingReadings';
@@ -23,6 +25,7 @@ interface Props {
   contacts: TrustedContact[];
   readingsList: GroundingReading[];
   privacyLockOn: boolean;
+  programType: ProgramType;
   iconColors: Record<string, string>;
   switchColors: { trackColor: { false: string; true: string }; thumbColor: string };
   onOpenProfile: () => void;
@@ -31,6 +34,7 @@ interface Props {
   onOpenAnalytics: () => void;
   onOpenThoughts: () => void;
   onTogglePrivacyLock: (value: boolean) => void;
+  onChangeProgramType: (type: ProgramType) => void;
 }
 
 export function ProfileSection({
@@ -39,6 +43,7 @@ export function ProfileSection({
   contacts,
   readingsList,
   privacyLockOn,
+  programType,
   iconColors,
   switchColors,
   onOpenProfile,
@@ -47,6 +52,7 @@ export function ProfileSection({
   onOpenAnalytics,
   onOpenThoughts,
   onTogglePrivacyLock,
+  onChangeProgramType,
 }: Props) {
   return (
     <>
@@ -143,6 +149,48 @@ export function ProfileSection({
                 onValueChange={onTogglePrivacyLock}
                 {...switchColors}
               />
+            </View>
+          </View>
+        </View>
+
+        {/* Program type sub-section */}
+        <View className="mt-4">
+          <Text className="text-sm text-muted-foreground mb-2">Program Type</Text>
+          <View className={`${cardClass} gap-3`}>
+            <View className="flex-row items-center gap-3">
+              <Heart size={20} color={iconColors.primary} />
+              <View className="flex-1">
+                <Text className="text-foreground font-medium">
+                  {programType === 'recovery' ? 'Recovery' : 'Support (Al-Anon / CoDA)'}
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  {programType === 'recovery'
+                    ? 'Sobriety tracking & daily commitments enabled'
+                    : 'Sobriety & daily commitments hidden'}
+                </Text>
+              </View>
+            </View>
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => onChangeProgramType('recovery')}
+                className={`flex-1 py-2 rounded-lg items-center border ${
+                  programType === 'recovery' ? 'border-primary bg-primary/10' : 'border-border'
+                }`}
+              >
+                <Text className={`text-sm font-medium ${programType === 'recovery' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Recovery
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onChangeProgramType('support')}
+                className={`flex-1 py-2 rounded-lg items-center border ${
+                  programType === 'support' ? 'border-primary bg-primary/10' : 'border-border'
+                }`}
+              >
+                <Text className={`text-sm font-medium ${programType === 'support' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Support
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

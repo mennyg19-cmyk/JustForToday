@@ -1,5 +1,5 @@
 /**
- * Big Book passage text for Morning and Nightly inventory (pp. 86–88).
+ * Big Book passage text for Morning, Nightly, and Fear inventory.
  * Kept in a separate file to avoid bloating bigBook.ts.
  */
 
@@ -20,3 +20,9 @@ As we go through the day we pause, when agitated or doubtful, and ask for the ri
 It works - it really does.
 
 We alcoholics are undisciplined. So we let God discipline us in the simple way we have just outlined.`;
+
+export const FEAR_PASSAGE_TEXT = `We reviewed our fears thoroughly. We put them on paper, even though we had no resentment in connection with them. We asked ourselves why we had them. Wasn't it because self-reliance failed us? Self-reliance was good as far as it went, but it didn't go far enough. Some of us once had great self-confidence, but it didn't fully solve the fear problem, or any other. When it made us cocky, it was worse.
+
+Perhaps there is a better way — we think so. For we are now on a different basis; the basis of trusting and relying upon God. We trust infinite God rather than our finite selves. We are in the world to play the role He assigns. Just to the extent that we do as we think He would have us, and humbly rely on Him, does He enable us to match calamity with serenity.
+
+We never apologize to anyone for depending upon our Creator. We can laugh at those who think spirituality the way of weakness. Paradoxically, it is the way of strength. The verdict of the ages is that faith means courage. All men of faith have courage. They trust their God. We never apologize for God. Instead we let Him demonstrate, through us, what He can do. We ask Him to remove our fear and direct our attention to what He would have us be. At once, we commence to outgrow fear.`;

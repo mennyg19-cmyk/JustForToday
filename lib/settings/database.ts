@@ -36,6 +36,7 @@ const SETTINGS_KEYS = {
   SAF_FOLDER_URI: 'saf_folder_uri',
   COMMITMENT_PROMPT_DISMISSED_DATE: 'commitment_prompt_dismissed_date',
   PRIVACY_LOCK_ENABLED: 'privacy_lock_enabled',
+  PROGRAM_TYPE: 'program_type',
 } as const;
 
 /**
@@ -545,4 +546,23 @@ export async function resetDisplayDefaults(): Promise<void> {
     saveDashboardOrder([...DEFAULT_DASHBOARD_ORDER]),
     saveDashboardSectionOrder([...DEFAULT_SECTION_ORDER]),
   ]);
+}
+
+// -- Program type (recovery vs support/Al-Anon) --
+
+export type ProgramType = 'recovery' | 'support';
+
+export async function getProgramType(): Promise<ProgramType> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.getProgramTypeAsync();
+  }
+  return getSetting<ProgramType>(SETTINGS_KEYS.PROGRAM_TYPE, 'recovery');
+}
+
+export async function setProgramType(type: ProgramType): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setProgramTypeAsync(type);
+    return;
+  }
+  await setSetting(SETTINGS_KEYS.PROGRAM_TYPE, type);
 }

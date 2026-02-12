@@ -2,7 +2,7 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 /**
  * Initial database migration
- * Creates all tables for the LifeTrack Pro app
+ * Creates all tables for the Just For Today app
  */
 export async function up(db: SQLiteDatabase): Promise<void> {
   // Habits table

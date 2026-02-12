@@ -1,9 +1,9 @@
-# LifeTrack Pro Clean - Implementation Status
+# Just For Today - Implementation Status
 
 ## ✅ Completed
 
 ### Foundation
-- ✅ New Expo app scaffolded in `LifeTrackPro-Clean/`
+- ✅ New Expo app scaffolded in `JustForToday/`
 - ✅ Prettier, ESLint, TypeScript strict mode configured
 - ✅ SQLite database layer with migrations
 - ✅ iCloud Drive sync layer
@@ -40,7 +40,7 @@ The following features have placeholder screens but need full SQLite implementat
 
 1. **Install Dependencies**
    ```bash
-   cd LifeTrackPro-Clean
+   cd JustForToday
    npm install
    # or
    bun install
@@ -81,7 +81,7 @@ The following features have placeholder screens but need full SQLite implementat
 ## 📁 File Structure
 
 ```
-LifeTrackPro-Clean/
+JustForToday/
 ├── app/                    # Expo Router screens
 ├── components/             # Shared UI components
 ├── features/               # Feature-based organization

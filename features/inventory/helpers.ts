@@ -1,8 +1,8 @@
-import type { InventoryEntry } from '@/lib/database/schema';
+import type { InventoryEntry, InventoryEntryType } from '@/lib/database/schema';
 import type { MorningInventoryData } from './types';
 
 /** Default empty inventory payload for creating new entries. */
-export const emptyPayload = (type: string): Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'> => ({
+export const emptyPayload = (type: InventoryEntryType): Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'> => ({
   type,
   who: '',
   whatHappened: '',

@@ -39,7 +39,7 @@ export interface SobrietyHistoryRow {
 
 export interface InventoryEntryRow {
   id: string;
-  type: 'morning' | 'nightly' | 'step10';
+  type: 'morning' | 'nightly' | 'step10' | 'fear';
   who: string;
   what_happened: string;
   affects_json: string; // JSON array of strings
@@ -166,7 +166,7 @@ export interface Step10InventoryEntry {
   notes?: string;
 }
 
-export type InventoryEntryType = 'morning' | 'nightly' | 'step10';
+export type InventoryEntryType = 'morning' | 'nightly' | 'step10' | 'fear';
 
 export interface InventoryEntry extends Step10InventoryEntry {
   type: InventoryEntryType;

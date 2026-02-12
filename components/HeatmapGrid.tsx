@@ -88,11 +88,10 @@ export function HeatmapGrid({
     const count = dayScores.length;
     const rows = gridRows && gridRows > 0 ? gridRows : 1;
     const cols = Math.ceil(count / rows);
-    const sidePadding = 18;
     const availableWidth =
       containerWidth > 0
-        ? containerWidth - sidePadding * 2
-        : windowWidth - 48 - sidePadding * 2;
+        ? containerWidth
+        : windowWidth - 48;
     const minCellSize = 12;
     const cellSize =
       cols > 0
@@ -100,7 +99,7 @@ export function HeatmapGrid({
         : minCellSize;
     const rowGap = 2;
     return (
-      <View className="w-full" onLayout={onLayout} style={{ paddingHorizontal: sidePadding }}>
+      <View className="w-full items-center" onLayout={onLayout}>
         <View style={{ gap: rowGap }}>
           {Array.from({ length: rows }, (_, rowIndex) => {
             const start = rowIndex * cols;
@@ -108,7 +107,7 @@ export function HeatmapGrid({
             return (
               <View
                 key={rowIndex}
-                className="flex-row items-start"
+                className="flex-row justify-center"
                 style={{ gap: GAP }}
               >
                 {slice.map(({ dateKey, score, beforeTrackingStart }) => {

@@ -62,12 +62,14 @@ export function useInventory() {
   }, []);
 
   const step10Entries = entries.filter((e) => e.type === 'step10');
+  const fearEntries = entries.filter((e) => e.type === 'fear');
   const morningEntries = entries.filter((e) => e.type === 'morning');
   const nightlyEntries = entries.filter((e) => e.type === 'nightly');
 
   return {
     entries,
     step10Entries,
+    fearEntries,
     morningEntries,
     nightlyEntries,
     loading,

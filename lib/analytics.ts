@@ -205,26 +205,28 @@ export interface WeekScore {
   label: string;
 }
 
-/** Weekly average score for the last N weeks (each week Sun–Sat). */
+/** Weekly average score for the last N weeks (each week Sun–Sat). Excludes beforeTrackingStart days. */
 export async function getWeeklyScoresForLastWeeks(
   weeks: number
 ): Promise<WeekScore[]> {
   const dayScores = await getDailyScoresForLastDays(weeks * 7 + 7);
-  const byWeek = new Map<string, number[]>();
+  const byWeek = new Map<string, DayScore[]>();
   for (const d of dayScores) {
     const date = new Date(d.dateKey + 'T00:00:00');
     const sun = new Date(date);
     sun.setDate(date.getDate() - date.getDay());
     const weekKey = formatDateKey(sun);
     if (!byWeek.has(weekKey)) byWeek.set(weekKey, []);
-    byWeek.get(weekKey)!.push(d.score);
+    byWeek.get(weekKey)!.push(d);
   }
   const sortedKeys = Array.from(byWeek.keys()).sort();
   return sortedKeys.slice(-weeks).map((dateKey) => {
-    const scores = byWeek.get(dateKey)!;
-    const score = Math.round(
-      scores.reduce((a, b) => a + b, 0) / scores.length
-    );
+    const allDays = byWeek.get(dateKey)!;
+    const tracked = allDays.filter((d) => !d.beforeTrackingStart);
+    const score =
+      tracked.length > 0
+        ? Math.round(tracked.reduce((a, b) => a + b.score, 0) / tracked.length)
+        : 0;
     const d = new Date(dateKey + 'T00:00:00');
     const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
     return { dateKey, score: Math.min(100, score), label };
@@ -237,25 +239,24 @@ export interface MonthScore {
   label: string;
 }
 
-/** Monthly average score for the last N months. */
+/** Monthly average score for the last N months. Excludes beforeTrackingStart days. */
 export async function getMonthlyScoresForLastMonths(
   months: number
 ): Promise<MonthScore[]> {
-  const allScores = await getDailyScoresForLastDays(400);
-  const byMonth = new Map<string, number[]>();
+  const allScores = await getDailyScoresForLastDays(months * 31 + 31);
+  const byMonth = new Map<string, DayScore[]>();
   for (const d of allScores) {
     const monthKey = d.dateKey.slice(0, 7) + '-01'; // YYYY-MM-01
     if (!byMonth.has(monthKey)) byMonth.set(monthKey, []);
-    byMonth.get(monthKey)!.push(d.score);
+    byMonth.get(monthKey)!.push(d);
   }
   const sortedKeys = Array.from(byMonth.keys()).sort();
   return sortedKeys.slice(-months).map((dateKey) => {
-    const scores = byMonth.get(dateKey)!;
+    const allDays = byMonth.get(dateKey)!;
+    const tracked = allDays.filter((d) => !d.beforeTrackingStart);
     const score =
-      scores.length > 0
-        ? Math.round(
-            scores.reduce((a, b) => a + b, 0) / scores.length
-          )
+      tracked.length > 0
+        ? Math.round(tracked.reduce((a, b) => a + b.score, 0) / tracked.length)
         : 0;
     const d = new Date(dateKey + 'T00:00:00');
     const label = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
@@ -287,7 +288,7 @@ export function getSuggestionsFromScores(
     { id: 'fasting', label: 'Fasting', avgPct: sum('fastingPct') / n, visible: visibility.fasting },
     { id: 'workouts', label: 'Exercise', avgPct: sum('workoutsPct') / n, visible: visibility.workouts },
     { id: 'sobriety', label: 'Sobriety', avgPct: sum('sobrietyPct') / n, visible: visibility.sobriety },
-    { id: 'daily_renewal', label: 'Daily Renewal', avgPct: sum('sobrietyPct') / n, visible: visibility.daily_renewal },
+    { id: 'daily_renewal', label: 'Daily Renewal', avgPct: sum('sobrietyPct') / n, visible: visibility.daily_renewal && visibility.sobriety },
     { id: 'stoic', label: 'Stoic Handbook', avgPct: sum('stoicPct') / n, visible: visibility.stoic },
   ];
   const sorted = areas

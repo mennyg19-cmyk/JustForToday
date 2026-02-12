@@ -50,7 +50,8 @@ import type { SectionId } from '@/lib/database/schema';
 import { useCheckIn } from '@/features/checkin/hooks/useCheckIn';
 import { getEncouragement } from '@/lib/encouragement';
 // commitment utilities used by CheckedInCard (extracted to components/)
-import { getUserProfile, type UserProfile, getCommitmentPromptDismissedDate, setCommitmentPromptDismissedDate } from '@/lib/settings/database';
+import { getUserProfile, type UserProfile, getCommitmentPromptDismissedDate, setCommitmentPromptDismissedDate, getProgramType } from '@/lib/settings/database';
+import type { ProgramType } from '@/lib/settings/database';
 import { DailyCommitmentPrompt } from '@/components/DailyCommitmentPrompt';
 import { CheckedInCard, LastCommitmentInfo } from '@/components/CheckedInCard';
 import { getTodayKey } from '@/utils/date';
@@ -119,6 +120,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { todayCheckIn, lastCheckIn, hasCheckedIn, loading: checkInLoading, refresh: refreshCheckIn, resetCheckIn } = useCheckIn();
   const [profile, setProfile] = useState<UserProfile>({ name: '', birthday: '' });
+  const [programType, setProgramType] = useState<ProgramType>('recovery');
 
   const [dailyProgress, setDailyProgress] = useState<DashboardData | null>(null);
   const [visibility, setVisibility] = useState<AppVisibility | null>(null);
@@ -186,6 +188,7 @@ export default function DashboardScreen() {
       fetchDashboard();
       refreshCheckIn();
       getUserProfile().then(setProfile).catch(() => {});
+      getProgramType().then(setProgramType).catch(() => {});
 
       // Check whether to show the daily commitment prompt
       (async () => {
@@ -268,6 +271,7 @@ export default function DashboardScreen() {
     );
   }
 
+  const isRecoveryUser = programType === 'recovery';
   const cardConfigs = getCardConfigs(dailyProgress);
   const secVis = sectionVisibility ?? { health: true, sobriety: true, daily_practice: true };
   const baseOrder = dashboardOrder.length > 0 ? dashboardOrder : defaultOrder;
@@ -440,8 +444,9 @@ export default function DashboardScreen() {
       >
         {/* -------------------------------------------------------------- */}
         {/* Check-In card — the primary action on the home screen          */}
+        {/* Hidden for support (Al-Anon) users                             */}
         {/* -------------------------------------------------------------- */}
-        {!checkInLoading && (
+        {isRecoveryUser && !checkInLoading && (
           hasCheckedIn && todayCheckIn ? (
             <CheckedInCard
               todayCheckIn={todayCheckIn}
@@ -563,14 +568,16 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {/* Daily commitment prompt — shown on first open of the day */}
-      <DailyCommitmentPrompt
-        visible={showCommitmentPrompt}
-        lastCheckIn={lastCheckIn}
-        userName={profile.name || undefined}
-        onGoToCheckIn={handlePromptGoToCheckIn}
-        onDismiss={handleDismissPrompt}
-      />
+      {/* Daily commitment prompt — shown on first open of the day (recovery users only) */}
+      {isRecoveryUser && (
+        <DailyCommitmentPrompt
+          visible={showCommitmentPrompt}
+          lastCheckIn={lastCheckIn}
+          userName={profile.name || undefined}
+          onGoToCheckIn={handlePromptGoToCheckIn}
+          onDismiss={handleDismissPrompt}
+        />
+      )}
     </SafeAreaView>
   );
 }

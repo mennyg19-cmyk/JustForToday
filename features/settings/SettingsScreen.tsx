@@ -44,7 +44,8 @@ import {
 } from '@/lib/groundingReadings';
 import { exportToFile } from '@/lib/dataManagement';
 import { usePrivacyLock } from '@/hooks/usePrivacyLock';
-import { getPrivacyLockEnabled, setPrivacyLockEnabled } from '@/lib/settings/database';
+import { getPrivacyLockEnabled, setPrivacyLockEnabled, getProgramType, setProgramType, saveAppVisibility } from '@/lib/settings/database';
+import type { ProgramType } from '@/lib/settings/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '@/lib/logger';
 
@@ -143,6 +144,9 @@ export function SettingsScreen() {
   const [newReadingTitle, setNewReadingTitle] = useState('');
   const [newReadingSubtitle, setNewReadingSubtitle] = useState('');
 
+  // Program type
+  const [programType, setProgramTypeState] = useState<import('@/lib/settings/database').ProgramType>('recovery');
+
   // Story
   const [showStoryModal, setShowStoryModal] = useState(false);
 
@@ -177,6 +181,7 @@ export function SettingsScreen() {
         getSafFolderUri().then(setSafFolder).catch(() => {});
       }
       getPrivacyLockEnabled().then(setPrivacyLockOn).catch(() => {});
+      getProgramType().then(setProgramTypeState).catch(() => {});
     }, [fetchSettings, loadReadings, refreshContacts])
   );
 
@@ -191,6 +196,24 @@ export function SettingsScreen() {
   const updateProfileField = useCallback((field: keyof UserProfile, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
   }, []);
+
+  const handleChangeProgramType = useCallback(async (type: ProgramType) => {
+    setProgramTypeState(type);
+    await setProgramType(type);
+    // Auto-toggle sobriety & daily_renewal visibility based on program type
+    if (visibility) {
+      const updated = { ...visibility };
+      if (type === 'support') {
+        updated.sobriety = false;
+        updated.daily_renewal = false;
+      } else {
+        updated.sobriety = true;
+        updated.daily_renewal = true;
+      }
+      await saveAppVisibility(updated);
+      fetchSettings();
+    }
+  }, [visibility, fetchSettings]);
 
   const handleToggleCompactView = useCallback(async (value: boolean) => {
     setCompactViewState(value);
@@ -509,6 +532,7 @@ export function SettingsScreen() {
           contacts={contacts}
           readingsList={readingsList}
           privacyLockOn={privacyLockOn}
+          programType={programType}
           iconColors={iconColors}
           switchColors={switchColors}
           onOpenProfile={() => setShowProfileModal(true)}
@@ -517,6 +541,7 @@ export function SettingsScreen() {
           onOpenAnalytics={() => router.push('/analytics')}
           onOpenThoughts={handleOpenThoughts}
           onTogglePrivacyLock={handleTogglePrivacyLock}
+          onChangeProgramType={handleChangeProgramType}
         />
 
         <AppearanceSection

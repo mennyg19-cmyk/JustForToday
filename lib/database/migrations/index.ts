@@ -6,6 +6,7 @@ import * as migration004 from './004_stoic';
 import * as migration005 from './005_habit_tracking_start';
 import * as migration006 from './006_daily_renewal';
 import * as migration007 from './007_checkin_and_contacts';
+import * as migration008 from './008_fear_inventory';
 import { logger } from '../../logger';
 
 export interface Migration {
@@ -21,6 +22,7 @@ export const migrations: Migration[] = [
   migration005,
   migration006,
   migration007,
+  migration008,
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

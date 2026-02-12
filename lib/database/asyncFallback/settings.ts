@@ -32,6 +32,7 @@ const KEYS = {
   SAF_FOLDER_URI: PREFIX + 'saf_folder_uri',
   COMMITMENT_PROMPT_DISMISSED_DATE: PREFIX + 'commitment_prompt_dismissed_date',
   PRIVACY_LOCK_ENABLED: PREFIX + 'privacy_lock_enabled',
+  PROGRAM_TYPE: PREFIX + 'program_type',
 };
 
 async function getJson<T>(key: string, defaultValue: T): Promise<T> {
@@ -268,4 +269,16 @@ export async function getOnboardingCompletedAsync(): Promise<boolean> {
 
 export async function setOnboardingCompletedAsync(): Promise<void> {
   await setJson(KEYS.ONBOARDING_COMPLETED, true);
+}
+
+// -- Program Type --
+
+export type ProgramType = 'recovery' | 'support';
+
+export async function getProgramTypeAsync(): Promise<ProgramType> {
+  return getJson<ProgramType>(KEYS.PROGRAM_TYPE, 'recovery');
+}
+
+export async function setProgramTypeAsync(type: ProgramType): Promise<void> {
+  await setJson(KEYS.PROGRAM_TYPE, type);
 }
