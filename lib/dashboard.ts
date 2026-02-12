@@ -81,7 +81,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   let dailyRenewalCountdown = '—';
   let dailyRenewalRenewed = 0;
   if (sobrietyCounters.length > 0) {
-    const todayKey = getTodayKey();
     const total = sobrietyCounters.length;
     // Only count renewals made today (calendar day), not a timer still running from yesterday
     dailyRenewalRenewed = sobrietyCounters.filter((c) => {

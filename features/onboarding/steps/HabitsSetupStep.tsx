@@ -112,7 +112,7 @@ export function HabitsSetupStep({ onNext, onSkip }: StepProps) {
                     <Text
                       className={isAdded ? 'text-primary font-medium' : 'text-secondary-foreground'}
                     >
-                      {isAdded ? ' ' : ''}{suggestion}
+                      {isAdded ? '✓ ' : ''}{suggestion}
                     </Text>
                   </TouchableOpacity>
                 );

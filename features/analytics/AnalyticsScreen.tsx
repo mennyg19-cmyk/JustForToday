@@ -1,6 +1,5 @@
 /**
- * AnalyticsScreen — shared shell with data loading, drill-down modal,
- * and a dev toggle to switch between Option A and Option C layouts.
+ * AnalyticsScreen — data loading, drill-down modal, and dashboard layout.
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -41,12 +40,9 @@ import { LoadingView } from '@/components/common/LoadingView';
 import { ErrorView } from '@/components/common/ErrorView';
 import { logger } from '@/lib/logger';
 import { AnalyticsOptionA } from './AnalyticsOptionA';
-import { AnalyticsOptionC } from './AnalyticsOptionC';
 
 const DAYS_IN_YEAR = 52 * 7;
 const SECTION_HREFS: Record<string, string> = MODULE_HREFS;
-
-type LayoutMode = 'A' | 'C';
 
 const DRILLDOWN_ROWS: { label: string; pctKey: keyof DayScore; sectionId: string; Icon: typeof CheckCircle }[] = [
   { label: 'Habits', pctKey: 'habitsPct', sectionId: 'habits', Icon: CheckCircle },
@@ -94,8 +90,6 @@ export default function AnalyticsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [drillDown, setDrillDown] = useState<{ type: 'day' | 'week' | 'month'; dateKey: string } | null>(null);
   const [checkIns, setCheckIns] = useState<DailyCheckIn[]>([]);
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('A');
-
   const load = useCallback(async () => {
     try {
       setError(null);
@@ -130,7 +124,7 @@ export default function AnalyticsScreen() {
     ? getSuggestionsFromScores(trackedDays, visibility)
     : [];
 
-  // --- Drill-down logic (shared by both layouts) ---
+  // --- Drill-down logic ---
   const drillDownBreakdown = useMemo(() => {
     if (!drillDown || !visibility) return null;
     const dayMap = new Map(dayScoresYear.map((d) => [d.dateKey, d]));
@@ -198,51 +192,18 @@ export default function AnalyticsScreen() {
             />
           }
         >
-          {/* DEV TOGGLE — remove after choosing a layout */}
-          <View className="flex-row bg-muted rounded-xl p-1 mb-4">
-            {(['A', 'C'] as const).map((mode) => (
-              <TouchableOpacity
-                key={mode}
-                onPress={() => setLayoutMode(mode)}
-                className={`flex-1 py-2 rounded-lg items-center ${
-                  layoutMode === mode ? 'bg-primary' : ''
-                }`}
-              >
-                <Text
-                  className={`font-semibold text-sm ${
-                    layoutMode === mode ? 'text-primary-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  {mode === 'A' ? 'Layout A: Dashboard' : 'Layout C: Timeline'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {layoutMode === 'A' && (
-            <AnalyticsOptionA
-              dayScoresYear={dayScoresYear}
-              suggestions={suggestions}
-              checkIns={checkIns}
-              visibility={visibility}
-              iconColors={iconColors}
-              onDrillDown={handleDrillDown}
-            />
-          )}
-
-          {layoutMode === 'C' && (
-            <AnalyticsOptionC
-              dayScoresYear={dayScoresYear}
-              suggestions={suggestions}
-              visibility={visibility}
-              iconColors={iconColors}
-              onDrillDown={handleDrillDown}
-            />
-          )}
+          <AnalyticsOptionA
+            dayScoresYear={dayScoresYear}
+            suggestions={suggestions}
+            checkIns={checkIns}
+            visibility={visibility}
+            iconColors={iconColors}
+            onDrillDown={handleDrillDown}
+          />
         </ScrollView>
       )}
 
-      {/* Drill-down modal (shared by both layouts) */}
+      {/* Drill-down modal */}
       <ModalSurface
         visible={!!drillDown}
         onRequestClose={() => setDrillDown(null)}

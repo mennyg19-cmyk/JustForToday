@@ -134,7 +134,7 @@ export function useHabits() {
     deleteHabit,
     updateHabit,
     reorderHabits,
-    refetch: loadHabits,
+    refresh: loadHabits,
     completedCount,
     totalCount,
     allCompleted,
