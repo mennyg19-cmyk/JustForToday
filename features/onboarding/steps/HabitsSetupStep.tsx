@@ -7,9 +7,8 @@ import { createHabit } from '@/features/habits/database';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
 const SUGGESTED_HABITS = [
@@ -21,7 +20,7 @@ const SUGGESTED_HABITS = [
   'Journal',
 ];
 
-export function HabitsSetupStep({ onNext, onSkip }: StepProps) {
+export function HabitsSetupStep({ onNext, onBack, onSkip }: StepProps) {
   const iconColors = useIconColors();
   const [habitName, setHabitName] = useState('');
   const [addedHabits, setAddedHabits] = useState<string[]>([]);
@@ -45,7 +44,7 @@ export function HabitsSetupStep({ onNext, onSkip }: StepProps) {
   };
 
   return (
-    <OnboardingStep onNext={onNext} onSkip={onSkip}>
+    <OnboardingStep onNext={onNext} onBack={onBack} onSkip={onSkip}>
         <View className="gap-6">
           {/* Icon */}
           <View className="items-center">
@@ -133,7 +132,9 @@ export function HabitsSetupStep({ onNext, onSkip }: StepProps) {
           )}
 
           <Text className="text-sm text-muted-foreground text-center leading-6">
-            You can add, edit, or reorder habits anytime.
+            {addedHabits.length === 0
+              ? "No habits yet — that's okay! You can always add them later in Settings."
+              : 'You can add, edit, or reorder habits anytime.'}
           </Text>
         </View>
     </OnboardingStep>

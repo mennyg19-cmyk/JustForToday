@@ -39,7 +39,7 @@ export interface SobrietyHistoryRow {
 
 export interface InventoryEntryRow {
   id: string;
-  type: 'morning' | 'nightly' | 'step10' | 'fear';
+  type: 'morning' | 'nightly' | 'step10';
   who: string;
   what_happened: string;
   affects_json: string; // JSON array of strings
@@ -166,7 +166,7 @@ export interface Step10InventoryEntry {
   notes?: string;
 }
 
-export type InventoryEntryType = 'morning' | 'nightly' | 'step10' | 'fear';
+export type InventoryEntryType = 'morning' | 'nightly' | 'step10';
 
 export interface InventoryEntry extends Step10InventoryEntry {
   type: InventoryEntryType;
@@ -207,7 +207,7 @@ export interface AppVisibility {
   sobriety: boolean;
   daily_renewal: boolean;
   fasting: boolean;
-  inventory: boolean;
+  step11: boolean;
   step10: boolean;
   steps: boolean;
   workouts: boolean;

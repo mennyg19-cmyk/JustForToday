@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Switch } from 'react-native';
 import { ModalSurface } from '@/components/ModalSurface';
+import { useIconColors } from '@/lib/iconTheme';
 import {
   ModalTitle,
   ModalLabel,
@@ -25,6 +26,7 @@ interface HabitFormModalProps {
 }
 
 export function HabitFormModal({ visible, onClose, onSubmit }: HabitFormModalProps) {
+  const iconColors = useIconColors();
   const [name, setName] = useState('');
   const [frequency, setFrequency] = useState<'daily' | 'weekly'>('daily');
   const [type, setType] = useState<'build' | 'break'>('build');
@@ -99,8 +101,8 @@ export function HabitFormModal({ visible, onClose, onSubmit }: HabitFormModalPro
             <Switch
               value={type === 'break'}
               onValueChange={(val) => setType(val ? 'break' : 'build')}
-              trackColor={{ false: '#B48C3C', true: '#C83232' }}
-              thumbColor="#ffffff"
+              trackColor={{ false: iconColors.primary, true: iconColors.destructive }}
+              thumbColor={iconColors.primaryForeground}
             />
           </View>
         </ModalBox>

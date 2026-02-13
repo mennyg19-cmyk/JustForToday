@@ -13,12 +13,11 @@ import type { ProgramType } from '@/lib/settings/database';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function ProgramTypeStep({ onNext }: StepProps) {
+export function ProgramTypeStep({ onNext, onBack }: StepProps) {
   const iconColors = useIconColors();
   const [selected, setSelected] = useState<ProgramType | null>(null);
   const [saving, setSaving] = useState(false);
@@ -31,7 +30,7 @@ export function ProgramTypeStep({ onNext }: StepProps) {
   };
 
   return (
-    <OnboardingStep onNext={selected ? handleContinue : undefined} showSkip={false}>
+    <OnboardingStep onNext={selected ? handleContinue : undefined} onBack={onBack} showSkip={false}>
       <Text className="text-3xl font-bold text-foreground mb-2">
         How are you using this app?
       </Text>

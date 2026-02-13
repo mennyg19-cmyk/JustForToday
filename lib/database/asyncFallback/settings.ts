@@ -7,7 +7,7 @@ import type {
 } from '@/lib/database/schema';
 import type { ThemeMode } from '@/lib/settings/database';
 import { DEFAULT_DASHBOARD_ORDER } from '@/lib/modules';
-import { DEFAULT_GOALS } from '@/lib/constants';
+import { DEFAULT_GOALS, DEFAULT_VISIBILITY, DEFAULT_SECTION_VISIBILITY } from '@/lib/constants';
 
 const PREFIX = 'lifetrack_';
 const KEYS = {
@@ -66,24 +66,6 @@ export async function saveGoalsAsync(goals: AppGoals): Promise<void> {
   await setJson(KEYS.GOALS, goals);
 }
 
-const DEFAULT_VISIBILITY: AppVisibility = {
-  habits: true,
-  sobriety: true,
-  daily_renewal: true,
-  fasting: true,
-  inventory: true,
-  step10: true,
-  steps: true,
-  workouts: true,
-  gratitude: true,
-  stoic: true,
-};
-
-const DEFAULT_SECTION_VISIBILITY: SectionVisibility = {
-  health: true,
-  sobriety: true,
-  daily_practice: true,
-};
 
 export async function getAppVisibilityAsync(): Promise<AppVisibility> {
   const raw = await getJson<Partial<AppVisibility>>(KEYS.VISIBILITY, {});
@@ -261,6 +243,18 @@ export async function setPrivacyLockEnabledAsync(enabled: boolean): Promise<void
   await setJson(KEYS.PRIVACY_LOCK_ENABLED, enabled);
 }
 
+// -- Program Type --
+
+export type AsyncProgramType = 'recovery' | 'support';
+
+export async function getProgramTypeAsync(): Promise<AsyncProgramType> {
+  return getJson<AsyncProgramType>(KEYS.PROGRAM_TYPE, 'recovery');
+}
+
+export async function setProgramTypeAsync(type: AsyncProgramType): Promise<void> {
+  await setJson(KEYS.PROGRAM_TYPE, type);
+}
+
 // -- Onboarding --
 
 export async function getOnboardingCompletedAsync(): Promise<boolean> {
@@ -269,16 +263,4 @@ export async function getOnboardingCompletedAsync(): Promise<boolean> {
 
 export async function setOnboardingCompletedAsync(): Promise<void> {
   await setJson(KEYS.ONBOARDING_COMPLETED, true);
-}
-
-// -- Program Type --
-
-export type ProgramType = 'recovery' | 'support';
-
-export async function getProgramTypeAsync(): Promise<ProgramType> {
-  return getJson<ProgramType>(KEYS.PROGRAM_TYPE, 'recovery');
-}
-
-export async function setProgramTypeAsync(type: ProgramType): Promise<void> {
-  await setJson(KEYS.PROGRAM_TYPE, type);
 }

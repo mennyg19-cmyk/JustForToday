@@ -5,13 +5,9 @@ const DB_NAME = 'lifetrack.db';
 let dbInstance: import('expo-sqlite').SQLiteDatabase | null = null;
 let sqliteAvailable: boolean | null = null;
 let migrationsVerified = false;
-/** Shared promise so concurrent getDatabase() callers don't run migrations in parallel. */
 let initPromise: Promise<import('expo-sqlite').SQLiteDatabase> | null = null;
 
-/**
- * Check if the native Expo SQLite module is available.
- * In Expo Go it is not included, so we use AsyncStorage fallback there.
- */
+/** Check if native SQLite is available (false in Expo Go). */
 export async function isSQLiteAvailable(): Promise<boolean> {
   if (sqliteAvailable !== null) {
     return sqliteAvailable;
@@ -27,10 +23,7 @@ export async function isSQLiteAvailable(): Promise<boolean> {
   return sqliteAvailable;
 }
 
-/**
- * Internal initializer — opens the database and runs migrations exactly once.
- * Callers share a single promise so concurrent access is safe.
- */
+/** Opens DB and runs migrations; shared across concurrent callers. */
 async function initializeDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
   const available = await isSQLiteAvailable();
   if (!available) {
@@ -47,13 +40,7 @@ async function initializeDatabase(): Promise<import('expo-sqlite').SQLiteDatabas
   return dbInstance;
 }
 
-/**
- * Get or create the database instance.
- * Runs migrations automatically on first access. Concurrent callers share
- * a single init promise so migrations never run in parallel (which would
- * cause a UNIQUE-constraint error on the _migrations table).
- * Throws if SQLite is not available (e.g. in Expo Go).
- */
+/** Get or create DB; runs migrations on first access. Throws in Expo Go. */
 export function getDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
   // Fast path — already fully initialised.
   if (migrationsVerified && dbInstance) {
@@ -72,10 +59,7 @@ export function getDatabase(): Promise<import('expo-sqlite').SQLiteDatabase> {
   return initPromise;
 }
 
-/**
- * Close the database connection.
- * Useful for cleanup or testing.
- */
+/** Close DB (for cleanup/testing). */
 export async function closeDatabase(): Promise<void> {
   if (dbInstance) {
     await dbInstance.closeAsync();
@@ -87,12 +71,7 @@ export async function closeDatabase(): Promise<void> {
 
 export const EXPO_GO_NO_SQLITE = 'EXPO_GO_NO_SQLITE';
 
-/**
- * Get the database file path
- * Used for iCloud sync
- * Note: expo-sqlite stores databases in the app's document directory
- * The actual path will be resolved in the sync layer using expo-file-system
- */
+/** DB file name (used for iCloud sync path resolution). */
 export function getDatabaseName(): string {
   return DB_NAME;
 }

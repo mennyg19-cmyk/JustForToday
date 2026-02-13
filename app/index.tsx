@@ -17,11 +17,11 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Image,
   StyleSheet,
 } from 'react-native';
+import { LoadingView } from '@/components/common/LoadingView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // AsyncStorage used by CheckedInCard (extracted to components/)
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -40,7 +40,7 @@ import {
   getDashboardGrouped,
   getCompactViewMode,
 } from '@/lib/settings';
-import type { AppVisibility, SectionVisibility, ModuleSettingsMap, DailyCheckIn } from '@/lib/database/schema';
+import type { AppVisibility, SectionVisibility, ModuleSettingsMap } from '@/lib/database/schema';
 import { useColorScheme } from 'nativewind';
 import { useIconColors } from '@/lib/iconTheme';
 import { getCardConfigs, CARD_IMAGES } from '@/lib/cardConfigs';
@@ -50,8 +50,7 @@ import type { SectionId } from '@/lib/database/schema';
 import { useCheckIn } from '@/features/checkin/hooks/useCheckIn';
 import { getEncouragement } from '@/lib/encouragement';
 // commitment utilities used by CheckedInCard (extracted to components/)
-import { getUserProfile, type UserProfile, getCommitmentPromptDismissedDate, setCommitmentPromptDismissedDate, getProgramType } from '@/lib/settings/database';
-import type { ProgramType } from '@/lib/settings/database';
+import { getUserProfile, type UserProfile, getCommitmentPromptDismissedDate, setCommitmentPromptDismissedDate } from '@/lib/settings/database';
 import { DailyCommitmentPrompt } from '@/components/DailyCommitmentPrompt';
 import { CheckedInCard, LastCommitmentInfo } from '@/components/CheckedInCard';
 import { getTodayKey } from '@/utils/date';
@@ -93,7 +92,7 @@ function isGoalCompleted(id: string, data: DashboardData): boolean {
       return data.habitsCompleted >= habitsTarget;
     case 'fasting':
       return data.fastingHoursGoal > 0 && data.fastingHours >= data.fastingHoursGoal;
-    case 'inventory':
+    case 'step11':
     case 'step10':
       return data.inventoriesPerDayGoal > 0 && data.inventoryCount >= data.inventoriesPerDayGoal;
     case 'steps':
@@ -120,14 +119,13 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { todayCheckIn, lastCheckIn, hasCheckedIn, loading: checkInLoading, refresh: refreshCheckIn, resetCheckIn } = useCheckIn();
   const [profile, setProfile] = useState<UserProfile>({ name: '', birthday: '' });
-  const [programType, setProgramType] = useState<ProgramType>('recovery');
 
   const [dailyProgress, setDailyProgress] = useState<DashboardData | null>(null);
   const [visibility, setVisibility] = useState<AppVisibility | null>(null);
   const [sectionVisibility, setSectionVisibility] = useState<SectionVisibility | null>(null);
   const [dashboardGrouped, setDashboardGrouped] = useState<boolean>(false);
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(['sobriety', 'daily_practice', 'health']);
-  const [_moduleSettings, setModuleSettings] = useState<ModuleSettingsMap>({});
+  const [, setModuleSettings] = useState<ModuleSettingsMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardOrder, setDashboardOrder] = useState<string[]>([]);
@@ -137,7 +135,7 @@ export default function DashboardScreen() {
   const [showCommitmentPrompt, setShowCommitmentPrompt] = useState(false);
   const [promptDismissedToday, setPromptDismissedToday] = useState(false);
   // Tools start collapsed — the home screen focuses on today's check-in
-  const [toolsExpanded, setToolsExpanded] = useState(true);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const [sectionsCollapsed, setSectionsCollapsed] = useState<Record<SectionKey, boolean>>({
     health: false,
     sobriety: false,
@@ -187,8 +185,7 @@ export default function DashboardScreen() {
     useCallback(() => {
       fetchDashboard();
       refreshCheckIn();
-      getUserProfile().then(setProfile).catch(() => {});
-      getProgramType().then(setProgramType).catch(() => {});
+      getUserProfile().then(setProfile).catch((err) => logger.error('Failed to load profile:', err));
 
       // Check whether to show the daily commitment prompt
       (async () => {
@@ -248,11 +245,7 @@ export default function DashboardScreen() {
   }, [router]);
 
   if (loading) {
-    return (
-      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" />
-      </SafeAreaView>
-    );
+    return <LoadingView />;
   }
 
   if (error || !dailyProgress || !visibility) {
@@ -271,7 +264,6 @@ export default function DashboardScreen() {
     );
   }
 
-  const isRecoveryUser = programType === 'recovery';
   const cardConfigs = getCardConfigs(dailyProgress);
   const secVis = sectionVisibility ?? { health: true, sobriety: true, daily_practice: true };
   const baseOrder = dashboardOrder.length > 0 ? dashboardOrder : defaultOrder;
@@ -304,7 +296,7 @@ export default function DashboardScreen() {
 
     if (compactView) {
       return (
-        <Link href={config.href as any} asChild>
+        <Link href={config.href as any /* expo-router href typing workaround */} asChild>
           <TouchableOpacity className="w-full">
             <View className="bg-card rounded-xl overflow-hidden border border-border p-3 shadow-card">
               <View className="flex-row items-center gap-2 mb-1">
@@ -332,7 +324,7 @@ export default function DashboardScreen() {
     }
 
     return (
-      <Link href={config.href as any} asChild>
+      <Link href={config.href as any /* expo-router href typing workaround */} asChild>
         <TouchableOpacity className="w-full">
           <View
             className={`rounded-2xl overflow-hidden border border-border shadow-card-lg ${imageSource ? '' : 'bg-card'}`}
@@ -444,16 +436,20 @@ export default function DashboardScreen() {
       >
         {/* -------------------------------------------------------------- */}
         {/* Check-In card — the primary action on the home screen          */}
-        {/* Hidden for support (Al-Anon) users                             */}
         {/* -------------------------------------------------------------- */}
-        {isRecoveryUser && !checkInLoading && (
+        {!checkInLoading && (
           hasCheckedIn && todayCheckIn ? (
-            <CheckedInCard
-              todayCheckIn={todayCheckIn}
-              onReset={resetCheckIn}
-              encouragement={encouragement}
-              isDark={isDark}
-            />
+            <View className="gap-2">
+              <CheckedInCard
+                todayCheckIn={todayCheckIn}
+                onReset={resetCheckIn}
+                encouragement={encouragement}
+                isDark={isDark}
+              />
+              <Text className="text-muted-foreground text-xs text-center px-4">
+                Your commitment is active. The tools below can help you through today.
+              </Text>
+            </View>
           ) : promptDismissedToday ? (
             /* Gentle reminder — user dismissed the prompt earlier */
             <View className="gap-2">
@@ -480,16 +476,15 @@ export default function DashboardScreen() {
               <TouchableOpacity
                 onPress={() => router.push('/check-in')}
                 activeOpacity={0.8}
-                className="bg-primary rounded-2xl py-6 px-6 items-center"
+                className="bg-primary rounded-2xl py-8 px-6 items-center"
               >
-                <Text className="text-primary-foreground font-bold text-lg">
+                <Text className="text-primary-foreground font-bold text-xl">
                   Check In
                 </Text>
-                <Text className="text-primary-foreground/70 text-sm mt-1">
-                  Start your day with a commitment
+                <Text className="text-primary-foreground/80 text-base mt-2">
+                  Just for today — commit to the next 24 hours
                 </Text>
               </TouchableOpacity>
-              {/* Show when the last commitment expired, if any */}
               <LastCommitmentInfo lastCheckIn={lastCheckIn} />
             </View>
           )
@@ -514,6 +509,11 @@ export default function DashboardScreen() {
             )}
             <Text className="text-lg font-bold text-foreground">Your Tools</Text>
           </TouchableOpacity>
+          <Text className="text-muted-foreground text-xs -mt-2 ml-8">
+            {toolsExpanded
+              ? 'These tools support your daily commitment.'
+              : 'Your tools are here to help you through today. Tap to expand.'}
+          </Text>
 
           {toolsExpanded && (
             grouped ? (
@@ -568,16 +568,14 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {/* Daily commitment prompt — shown on first open of the day (recovery users only) */}
-      {isRecoveryUser && (
-        <DailyCommitmentPrompt
-          visible={showCommitmentPrompt}
-          lastCheckIn={lastCheckIn}
-          userName={profile.name || undefined}
-          onGoToCheckIn={handlePromptGoToCheckIn}
-          onDismiss={handleDismissPrompt}
-        />
-      )}
+      {/* Daily commitment prompt — shown on first open of the day */}
+      <DailyCommitmentPrompt
+        visible={showCommitmentPrompt}
+        lastCheckIn={lastCheckIn}
+        userName={profile.name || undefined}
+        onGoToCheckIn={handlePromptGoToCheckIn}
+        onDismiss={handleDismissPrompt}
+      />
     </SafeAreaView>
   );
 }

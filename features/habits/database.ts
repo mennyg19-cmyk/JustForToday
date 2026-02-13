@@ -1,6 +1,6 @@
 import { getDatabase, isSQLiteAvailable } from '@/lib/database/db';
 import type { Habit } from '@/lib/database/schema';
-import { formatDateKey, getTodayKey, getWeekStart, getWeekEnd, getMonthStart, getMonthEnd } from '@/utils/date';
+import { formatDateKey, getTodayKey, getWeekStart, getWeekEnd, getMonthStart, getMonthEnd, parseDateKey } from '@/utils/date';
 import { triggerSync } from '@/lib/sync';
 import { getHabitsOrder } from '@/lib/settings';
 import * as asyncHabits from '@/lib/database/asyncFallback/habits';
@@ -42,8 +42,8 @@ function calculateLongestStreak(history: Record<string, boolean>): number {
   let currentStreak = 1;
 
   for (let i = 1; i < dates.length; i++) {
-    const prevDate = new Date(dates[i - 1] + 'T00:00:00');
-    const currDate = new Date(dates[i] + 'T00:00:00');
+    const prevDate = parseDateKey(dates[i - 1]);
+    const currDate = parseDateKey(dates[i]);
     const diffDays = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 1) {

@@ -51,6 +51,7 @@ export function ModalSurface({
 
   const contentWrapperStyle =
     position === 'bottom'
+      // RN style types don't accept percentage strings, but they work at runtime
       ? [styles.contentBase, styles.contentBottom, { maxHeight: '85%' as any }]
       : [styles.contentBase, styles.contentCenter];
 
@@ -74,7 +75,7 @@ export function ModalSurface({
 
   const content = (
     <View
-      style={themeStyle as any}
+      style={themeStyle as any} // ThemeStyle → ViewStyle mismatch; safe at runtime
       className={`bg-modal-content border border-modal-border rounded-2xl overflow-hidden ${contentClassName}`.trim()}
     >
       {inner}

@@ -29,7 +29,7 @@ import type { FastingSession } from '@/lib/database/schema';
 import { ModalSurface } from '@/components/ModalSurface';
 import { AddPastSessionModal } from './components/AddPastSessionModal';
 import { EditSessionModal } from './components/EditSessionModal';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 
 /** Card container: consistent with other screens (gratitude, inventory). */
 function Card({
@@ -47,9 +47,7 @@ function Card({
 }
 
 export function FastingScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ from?: string }>();
-  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
+  const backToAnalytics = useBackToAnalytics();
   const iconColors = useIconColors();
   const {
     sessions,
@@ -66,6 +64,13 @@ export function FastingScreen() {
 
   const [tick, setTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
   const [showAddPast, setShowAddPast] = useState(false);
   const [editSession, setEditSession] = useState<FastingSession | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<FastingSession | null>(null);
@@ -176,8 +181,8 @@ export function FastingScreen() {
         contentContainerStyle={{ padding: 24, paddingBottom: 96 }}
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={refresh}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             tintColor={iconColors.primary}
           />
         }

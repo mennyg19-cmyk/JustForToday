@@ -72,8 +72,8 @@ export function DailyCommitmentPrompt({
         {/* Status message */}
         <Text className="text-sm text-muted-foreground text-center leading-5 px-2">
           {hasActiveCommitment
-            ? `Your ${commitmentLabel(lastCheckIn!.commitmentType).toLowerCase()} is still active. Ready to renew for today?`
-            : "A new day, a fresh start. Whenever you're ready, you can set your commitment for today."}
+            ? `Your ${commitmentLabel(lastCheckIn?.commitmentType ?? 'full_day').toLowerCase()} is still active. Ready to renew for the next 24 hours?`
+            : "Just for today — commit to the next 24 hours. That's all it takes."}
         </Text>
 
         {/* Primary action */}

@@ -12,6 +12,7 @@ import {
   setLastDailyRenewal,
 } from '../database';
 import { logger } from '@/lib/logger';
+import { parseDateKey } from '@/utils/date';
 
 export function useSobriety() {
   const [counters, setCounters] = useState<SobrietyCounter[]>([]);
@@ -40,7 +41,7 @@ export function useSobriety() {
   );
 
   // Only tick when app is active to avoid background battery drain
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     intervalRef.current = setInterval(() => setCurrentTime(new Date()), 1000);
     const sub = AppState.addEventListener('change', (state) => {
@@ -90,7 +91,7 @@ export function useSobriety() {
       );
 
       if (newValue === false) {
-        const date = new Date(dateKey + 'T00:00:00');
+        const date = parseDateKey(dateKey);
         const now = new Date();
         const newStart = new Date(date);
         newStart.setHours(

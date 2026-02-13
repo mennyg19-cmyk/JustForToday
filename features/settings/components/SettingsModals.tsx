@@ -23,7 +23,7 @@ import {
 import { ModalSurface } from '@/components/ModalSurface';
 import { ModalButton, ModalButtonRow } from '@/components/ModalContent';
 import { SECTIONS, DEFAULT_GOALS } from '../constants';
-import type { TrustedContact } from '@/lib/database/schema';
+import type { TrustedContact, ModuleSettingsMap, ModuleId } from '@/lib/database/schema';
 import type { GroundingReading } from '@/lib/groundingReadings';
 import type { UserProfile } from '@/lib/settings/database';
 
@@ -33,15 +33,15 @@ interface Props {
 
   // Module settings modal
   moduleSettingsModal: { moduleId: (typeof SECTIONS)[number]['id']; label: string } | null;
-  moduleSettings: Record<string, { trackingStartDate?: string; countInScore?: boolean }>;
+  moduleSettings: ModuleSettingsMap;
   effectiveGoals: Record<string, number>;
   resetTrackingMessage: boolean;
   onCloseModuleSettings: () => void;
-  onResetModuleTrackingStartDate: (id: string) => Promise<void>;
+  onResetModuleTrackingStartDate: (id: ModuleId) => Promise<void>;
   onSetResetTrackingMessage: (v: boolean) => void;
   onGoalsChange: (patch: Record<string, number>) => void;
   onPersistGoals: () => void;
-  onSetModuleCountInScore: (id: string, v: boolean) => void;
+  onSetModuleCountInScore: (id: ModuleId, v: boolean) => void;
 
   // Import confirmation
   confirmImport: boolean;
@@ -114,7 +114,7 @@ const GOAL_FIELDS: Record<string, { key: string; placeholder: string }> = {
   steps: { key: 'stepsGoal', placeholder: String(DEFAULT_GOALS.stepsGoal) },
   workouts: { key: 'workoutsGoal', placeholder: String(DEFAULT_GOALS.workoutsGoal) },
   fasting: { key: 'fastingHoursGoal', placeholder: String(DEFAULT_GOALS.fastingHoursGoal) },
-  inventory: { key: 'inventoriesPerDayGoal', placeholder: String(DEFAULT_GOALS.inventoriesPerDayGoal) },
+  step11: { key: 'inventoriesPerDayGoal', placeholder: String(DEFAULT_GOALS.inventoriesPerDayGoal) },
   gratitude: { key: 'gratitudesPerDayGoal', placeholder: String(DEFAULT_GOALS.gratitudesPerDayGoal) },
 };
 

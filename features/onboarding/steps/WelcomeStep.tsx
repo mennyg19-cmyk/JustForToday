@@ -6,16 +6,15 @@ import { useIconColors } from '@/lib/iconTheme';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function WelcomeStep({ onNext, onSkip }: StepProps) {
+export function WelcomeStep({ onNext, onBack, onSkip }: StepProps) {
   const iconColors = useIconColors();
 
   return (
-    <OnboardingStep onNext={onNext} onSkip={onSkip} nextLabel="Let's Begin" showSkip={false}>
+    <OnboardingStep onNext={onNext} onBack={onBack} onSkip={onSkip} nextLabel="Let's Begin" showSkip={false}>
       <View className="items-center gap-8 pt-12">
         {/* App Icon/Logo */}
         <Image

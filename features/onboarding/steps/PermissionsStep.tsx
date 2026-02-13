@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Platform, Alert } from 'react-native';
 import { OnboardingStep } from '../components/OnboardingStep';
 import { Shield, Activity, Users } from 'lucide-react-native';
@@ -9,15 +9,26 @@ import { logger } from '@/lib/logger';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function PermissionsStep({ onNext, onSkip }: StepProps) {
+export function PermissionsStep({ onNext, onBack, onSkip }: StepProps) {
   const iconColors = useIconColors();
   const [healthKitGranted, setHealthKitGranted] = useState(false);
   const [contactsGranted, setContactsGranted] = useState(false);
+
+  // Check existing permission state on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Contacts.getPermissionsAsync();
+        if (status === 'granted') setContactsGranted(true);
+      } catch {
+        // Ignore — will show Enable button
+      }
+    })();
+  }, []);
 
   const handleHealthKitRequest = async () => {
     if (Platform.OS !== 'ios') {
@@ -35,12 +46,10 @@ export function PermissionsStep({ onNext, onSkip }: StepProps) {
         setHealthKitGranted(true);
         Alert.alert('Connected', 'HealthKit is now connected. Your steps and workouts will sync automatically.');
       } else {
-        // initHealthKit returned false — either the permission dialog was shown
-        // and the user denied it, or the native module failed to load.
-        // Mark as granted anyway since we can't distinguish — the user may have
-        // partially granted permissions which iOS reports as success.
-        setHealthKitGranted(true);
-        Alert.alert('Done', 'If you allowed access, your steps and workouts will sync automatically. You can manage this anytime in the Health app under Sharing > Apps.');
+        Alert.alert(
+          'Permission Needed',
+          'HealthKit access was not granted. You can enable it anytime in Settings > Privacy > Health.',
+        );
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -65,7 +74,7 @@ export function PermissionsStep({ onNext, onSkip }: StepProps) {
   };
 
   return (
-    <OnboardingStep onNext={onNext} onSkip={onSkip}>
+    <OnboardingStep onNext={onNext} onBack={onBack} onSkip={onSkip}>
       <View className="gap-6">
         {/* Icon */}
         <View className="items-center">

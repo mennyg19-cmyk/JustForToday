@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Edit2 } from 'lucide-react-native';
@@ -12,15 +12,14 @@ import { HabitFormModal } from './components/HabitFormModal';
 import { HabitCalendar } from './components/HabitCalendar';
 import type { Habit } from './types';
 import { getTodayKey } from '@/utils/date';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 import { logger } from '@/lib/logger';
 import { getHabitsShowMetrics, setHabitsShowMetrics } from '@/lib/settings/database';
-import { useIconColors } from '@/lib/iconTheme';
+import { useSwitchColors } from '@/lib/iconTheme';
 
 export function HabitsScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ from?: string }>();
-  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
+  const backToAnalytics = useBackToAnalytics();
   const {
     habits,
     loading,
@@ -31,19 +30,12 @@ export function HabitsScreen() {
     reorderHabits,
   } = useHabits();
 
-  const iconColors = useIconColors();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [showMetrics, setShowMetrics] = useState(true);
 
-  const switchColors = useMemo(
-    () => ({
-      trackColor: { false: iconColors.muted, true: iconColors.primary },
-      thumbColor: iconColors.primaryForeground,
-    }),
-    [iconColors]
-  );
+  const switchColors = useSwitchColors();
 
   // Re-read the setting every time the screen gains focus
   useFocusEffect(

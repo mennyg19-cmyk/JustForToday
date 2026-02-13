@@ -11,7 +11,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckCircle, Check } from 'lucide-react-native';
 import type { DailyCheckIn } from '@/lib/database/schema';
 import { commitmentLabel, getCommitmentRemainingMs, commitmentDurationMs } from '@/lib/commitment';
-import { useIconColors } from '@/lib/iconTheme';
+import { logger } from '@/lib/logger';
+
 
 /** Rotating encouragement messages for an active countdown. */
 const COUNTDOWN_MESSAGES = [
@@ -63,11 +64,12 @@ export function CheckedInCard({ todayCheckIn, onReset, encouragement, isDark }: 
         try {
           const arr = JSON.parse(raw) as boolean[];
           setTodosCompleted(todoLines.map((_, i) => arr[i] ?? false));
-        } catch {
+        } catch (err) {
+          logger.error('Failed to parse todos:', err);
           setTodosCompleted(todoLines.map(() => todayCheckIn.todoCompleted));
         }
       }
-    }).catch(() => {});
+    }).catch((err) => logger.error('Failed to load todos:', err));
 
     AsyncStorage.getItem(COMMITTED_KEY_PREFIX + dateKey).then((raw) => {
       if (raw) {
@@ -77,9 +79,9 @@ export function CheckedInCard({ todayCheckIn, onReset, encouragement, isDark }: 
             typeof item === 'string' ? item : item.name
           );
           setCommittedNames(names);
-        } catch { /* best-effort */ }
+        } catch (err) { logger.error('Failed to parse committed names:', err); }
       }
-    }).catch(() => {});
+    }).catch((err) => logger.error('Failed to load committed names:', err));
   }, [todayCheckIn.date]);
 
   const toggleTodoItem = useCallback(async (index: number) => {
@@ -89,7 +91,7 @@ export function CheckedInCard({ todayCheckIn, onReset, encouragement, isDark }: 
     await AsyncStorage.setItem(
       TODOS_KEY_PREFIX + todayCheckIn.date,
       JSON.stringify(next)
-    ).catch(() => {});
+    ).catch((err) => logger.error('Failed to save todos:', err));
   }, [todosCompleted, todayCheckIn.date]);
 
   useEffect(() => {

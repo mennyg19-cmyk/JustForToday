@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useColorScheme } from 'nativewind';
 
 /**
@@ -18,4 +19,16 @@ export function useIconColors() {
     destructive: isDark ? '#DC5050' : '#C83232',
     destructiveForeground: isDark ? '#1E1910' : '#FFFFFF',
   };
+}
+
+/** Theme-aware trackColor / thumbColor props for Switch components. */
+export function useSwitchColors() {
+  const iconColors = useIconColors();
+  return useMemo(
+    () => ({
+      trackColor: { false: iconColors.muted, true: iconColors.primary },
+      thumbColor: iconColors.primaryForeground,
+    }),
+    [iconColors]
+  );
 }

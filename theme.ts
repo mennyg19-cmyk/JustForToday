@@ -56,6 +56,27 @@ export const progressCardColors = {
   dark: '#D4B26A',
 };
 
+/**
+ * Hex values for React Native style objects (tab bar, FAB, etc.) where
+ * CSS variables cannot be used. Derived from theme RGB tokens.
+ */
+export const themeColors = {
+  light: {
+    card: '#FFFDF7',
+    background: '#FCF9F2',
+    secondary: '#F5EEDC',
+    muted: '#F5F1E8',
+    border: '#E6DEC5',
+  },
+  dark: {
+    card: '#262119',
+    background: '#16120C',
+    secondary: '#322A1C',
+    muted: '#302A1E',
+    border: '#413828',
+  },
+};
+
 export const darkTheme = vars({
   '--radius': '14',
   '--background': '22 18 12',           // warm charcoal (not pure black)

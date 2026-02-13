@@ -17,16 +17,15 @@ import { AddCounterModal } from './components/AddCounterModal';
 import { CounterDetailModal } from './components/CounterDetailModal';
 import { SobrietyCard } from './components/SobrietyCard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 
 export function SobrietyScreen() {
   const router = useRouter();
+  const backToAnalytics = useBackToAnalytics();
   const params = useLocalSearchParams<{ from?: string }>();
   const customBack =
-    params.from === 'analytics'
-      ? () => router.replace('/analytics')
-      : params.from === 'checkin'
-        ? () => router.replace('/check-in')
-        : undefined;
+    backToAnalytics ??
+    (params.from === 'checkin' ? () => router.replace('/check-in') : undefined);
   const {
     counters,
     loading,

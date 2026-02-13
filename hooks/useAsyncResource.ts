@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, DependencyList } from 'react';
+import { useState, useEffect, useCallback, useRef, DependencyList } from 'react';
 import { logger } from '@/lib/logger';
 
 export interface UseAsyncResourceResult<T> {
@@ -8,9 +8,6 @@ export interface UseAsyncResourceResult<T> {
   refetch: () => Promise<void>;
 }
 
-/**
- * Generic hook for async data fetching with loading and error states
- */
 export function useAsyncResource<T>(
   fetchFn: () => Promise<T>,
   deps: DependencyList = []
@@ -18,12 +15,15 @@ export function useAsyncResource<T>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fnRef = useRef(fetchFn);
+  fnRef.current = fetchFn;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await fetchFn();
+      const result = await fnRef.current();
       setData(result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
@@ -32,7 +32,7 @@ export function useAsyncResource<T>(
     } finally {
       setLoading(false);
     }
-  }, [fetchFn, ...deps]);
+  }, deps);
 
   useEffect(() => {
     fetchData();

@@ -123,7 +123,7 @@ export function DataSection({
             {backupMode === 'manual' ? (
               <View className="gap-2">
                 <TouchableOpacity onPress={onExport} activeOpacity={0.7} className="flex-row items-center gap-3 py-2">
-                  <Upload size={20} color={iconColors.primary} />
+                  <Download size={20} color={iconColors.primary} />
                   <View className="flex-1">
                     <Text className="text-foreground font-medium">Export Backup</Text>
                     <Text className="text-xs text-muted-foreground">Save all your data as a file</Text>
@@ -131,7 +131,7 @@ export function DataSection({
                 </TouchableOpacity>
                 <View className="h-px bg-border" />
                 <TouchableOpacity onPress={onImport} activeOpacity={0.7} className="flex-row items-center gap-3 py-2">
-                  <Download size={20} color={iconColors.primary} />
+                  <Upload size={20} color={iconColors.primary} />
                   <View className="flex-1">
                     <Text className="text-foreground font-medium">Import from Backup</Text>
                     <Text className="text-xs text-muted-foreground">Restore a previously exported file</Text>

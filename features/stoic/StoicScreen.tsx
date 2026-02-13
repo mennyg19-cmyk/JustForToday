@@ -1,19 +1,18 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { BookOpen, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { useIconColors } from '@/lib/iconTheme';
+import { BookOpen, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useIconColors, useSwitchColors } from '@/lib/iconTheme';
 import { getStoicWeek, type StoicPart } from './handbookData';
 import {
   getStoicEntriesForWeek,
@@ -24,9 +23,6 @@ import {
 } from './database';
 import { getStoicCurrentWeekNumber } from './weekUtils';
 import { LessonContent } from './LessonContent';
-import { ModalSurface } from '@/components/ModalSurface';
-import { ModalButton, ModalButtonRow } from '@/components/ModalContent';
-import { CalendarGrid } from '@/components/CalendarGrid';
 import {
   getStoicWeekMode,
   setStoicWeekMode,
@@ -34,10 +30,12 @@ import {
   setStoicStartDate,
   type StoicWeekMode,
 } from '@/lib/settings/database';
-import { formatDateKey, formatDateDisplay } from '@/utils/date';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 import { CARD_MB as cardClass } from '@/components/cardStyles';
+import { LoadingView } from '@/components/common/LoadingView';
 import { logger } from '@/lib/logger';
+import { WeekSelector } from './components/WeekSelector';
+import { ScheduleSettings } from './components/ScheduleSettings';
 
 const DAY_KEYS: { key: StoicDayKey; label: string }[] = [
   { key: 'mon', label: 'Monday' },
@@ -87,9 +85,7 @@ function groupHistoryByPartAndWeek(entries: StoicEntry[]): { part: StoicPart; pa
 }
 
 export function StoicScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ from?: string }>();
-  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
+  const backToAnalytics = useBackToAnalytics();
   const iconColors = useIconColors();
   const [weekNumber, setWeekNumber] = useState(1);
   const [entries, setEntries] = useState<StoicEntry[]>([]);
@@ -100,8 +96,6 @@ export function StoicScreen() {
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [weekMode, setWeekMode] = useState<StoicWeekMode>('calendar');
   const [startDate, setStartDate] = useState<string | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pickerDate, setPickerDate] = useState(new Date());
   const draftRef = useRef<string>('');
 
   const weekData = getStoicWeek(weekNumber);
@@ -204,29 +198,21 @@ export function StoicScreen() {
     [loadWeek]
   );
 
-  const handleStartDateConfirm = useCallback(() => {
-    const key = formatDateKey(pickerDate);
-    setStartDate(key);
-    setStoicStartDate(key);
-    setShowDatePicker(false);
-    initCurrentWeek().then((w) => {
-      setWeekNumber(w);
-      loadWeek(w);
-    });
-  }, [pickerDate, initCurrentWeek, loadWeek]);
+  const handleStartDateConfirm = useCallback(
+    (dateKey: string) => {
+      setStartDate(dateKey);
+      setStoicStartDate(dateKey);
+      initCurrentWeek().then((w) => {
+        setWeekNumber(w);
+        loadWeek(w);
+      });
+    },
+    [initCurrentWeek, loadWeek]
+  );
 
   const reviewEntry = entries.find((e) => e.dayKey === 'review');
 
-  const switchColors = useMemo(
-    () => ({
-      trackColor: { false: iconColors.muted, true: iconColors.primary },
-      thumbColor: iconColors.primaryForeground,
-    }),
-    [iconColors]
-  );
-
-  const canPrev = weekNumber > 1;
-  const canNext = weekNumber < 52;
+  const switchColors = useSwitchColors();
 
   const handleWeekChange = useCallback(
     (delta: number) => {
@@ -250,82 +236,17 @@ export function StoicScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={iconColors.primary} />
         }
       >
-        {/* Schedule: week mode + start date */}
-        <View className={`${cardClass} mb-4`}>
-          <Text className="text-base font-semibold text-foreground mb-2">Stoic schedule</Text>
-          <Text className="text-sm text-muted-foreground mb-3">
-            Week 1 can follow the calendar year or your personal start date.
-          </Text>
-          <View className="flex-row gap-2 mb-3">
-            <TouchableOpacity
-              onPress={() => handleModeChange('calendar')}
-              className={`flex-1 py-2.5 rounded-xl border-2 ${
-                weekMode === 'calendar' ? 'border-primary bg-primary/10' : 'border-border bg-muted/30'
-              }`}
-            >
-              <Text
-                className={`text-center text-sm font-medium ${
-                  weekMode === 'calendar' ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                Weeks of the year
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleModeChange('personal')}
-              className={`flex-1 py-2.5 rounded-xl border-2 ${
-                weekMode === 'personal' ? 'border-primary bg-primary/10' : 'border-border bg-muted/30'
-              }`}
-            >
-              <Text
-                className={`text-center text-sm font-medium ${
-                  weekMode === 'personal' ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                From start date
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {weekMode === 'personal' && (
-            <TouchableOpacity
-              onPress={() => {
-                setPickerDate(startDate ? new Date(startDate + 'T00:00:00') : new Date());
-                setShowDatePicker(true);
-              }}
-              className="flex-row items-center gap-2 py-2 rounded-xl bg-muted/30 border border-border"
-            >
-              <Calendar size={20} color={iconColors.primary} />
-              <Text className="text-sm text-foreground flex-1">
-                {startDate ? formatDateDisplay(startDate) : 'Pick start date'}
-              </Text>
-              <ChevronRight size={18} color={iconColors.muted} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <ScheduleSettings
+          weekMode={weekMode}
+          startDate={startDate}
+          onModeChange={handleModeChange}
+          onStartDateConfirm={handleStartDateConfirm}
+        />
 
-        {/* Week selector */}
-        <View className="flex-row items-center justify-between mb-4">
-          <TouchableOpacity
-            onPress={() => canPrev && handleWeekChange(-1)}
-            disabled={!canPrev}
-            className="p-2 rounded-lg bg-card border border-border"
-          >
-            <ChevronLeft size={24} color={canPrev ? iconColors.primary : iconColors.muted} />
-          </TouchableOpacity>
-          <Text className="text-lg font-semibold text-foreground">Week {weekNumber} of 52</Text>
-          <TouchableOpacity
-            onPress={() => canNext && handleWeekChange(1)}
-            disabled={!canNext}
-            className="p-2 rounded-lg bg-card border border-border"
-          >
-            <ChevronRight size={24} color={canNext ? iconColors.primary : iconColors.muted} />
-          </TouchableOpacity>
-        </View>
+        <WeekSelector weekNumber={weekNumber} onWeekChange={handleWeekChange} />
 
         {loading ? (
-          <View className="py-12 items-center">
-            <ActivityIndicator size="large" color={iconColors.primary} />
-          </View>
+          <LoadingView />
         ) : (
           <>
             {/* Weekly reading */}
@@ -476,46 +397,6 @@ export function StoicScreen() {
           </>
         )}
       </ScrollView>
-
-      <ModalSurface visible={showDatePicker} onRequestClose={() => setShowDatePicker(false)}>
-        <View className="p-4">
-          <Text className="text-lg font-semibold text-foreground mb-3">Handbook start date</Text>
-          <CalendarGrid
-            monthDate={pickerDate}
-            onChangeMonth={setPickerDate}
-            renderDay={(date) => {
-              const isSelected =
-                pickerDate.getDate() === date.getDate() &&
-                pickerDate.getMonth() === date.getMonth() &&
-                pickerDate.getFullYear() === date.getFullYear();
-              return (
-                <TouchableOpacity
-                  onPress={() => setPickerDate(date)}
-                  className="w-[14.28%] aspect-square p-1"
-                >
-                  <View
-                    className={`flex-1 rounded-lg items-center justify-center ${
-                      isSelected ? 'bg-primary' : 'bg-muted'
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm font-semibold ${
-                        isSelected ? 'text-primary-foreground' : 'text-foreground'
-                      }`}
-                    >
-                      {date.getDate()}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            }}
-          />
-          <ModalButtonRow>
-            <ModalButton onPress={() => setShowDatePicker(false)}>Cancel</ModalButton>
-            <ModalButton variant="primary" onPress={handleStartDateConfirm}>Done</ModalButton>
-          </ModalButtonRow>
-        </View>
-      </ModalSurface>
     </SafeAreaView>
   );
 }

@@ -130,8 +130,8 @@ export const getCardConfigs = (_dailyProgress: DashboardData): Record<string, Ca
     },
     getBadgeText: (data) => formatCompact(data.inventoryCount),
   },
-  inventory: {
-    id: 'inventory',
+  step11: {
+    id: 'step11',
     title: 'Step 11',
     href: '/step11',
     icon: Calendar,

@@ -7,6 +7,7 @@ import {
   getPersonalWeekNumber,
 } from './weekUtils';
 import { getStoicWeekMode, getStoicStartDate } from '@/lib/settings/database';
+import { parseDateKey } from '@/utils/date';
 
 export type StoicDayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'review';
 
@@ -20,7 +21,7 @@ function getTodayDayKey(): StoicDayKey {
 
 /** Maps a date (YYYY-MM-DD) to Stoic day key. */
 function getDayKeyForDate(dateKey: string): StoicDayKey {
-  const d = new Date(dateKey + 'T00:00:00').getDay();
+  const d = parseDateKey(dateKey).getDay();
   if (d === 0) return 'review';
   const keys: StoicDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   return keys[d - 1];
@@ -142,7 +143,7 @@ export async function getStoicReflectionDoneForDates(
   >();
   const weeksNeeded = new Set<number>();
   for (const dateKey of dateKeys) {
-    const date = new Date(dateKey + 'T00:00:00');
+    const date = parseDateKey(dateKey);
     const weekNumber =
       mode === 'calendar'
         ? getCalendarWeekNumber(date)

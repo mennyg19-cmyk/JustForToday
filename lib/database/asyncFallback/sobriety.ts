@@ -28,14 +28,19 @@ function calculateLongestStreak(
 
 export async function getSobrietyCountersAsync(): Promise<SobrietyCounter[]> {
   const raw = await AsyncStorage.getItem(SOBRIETY_KEY);
-  const data = raw ? JSON.parse(raw) : [];
-  const migrated = data.map((c: any) => ({
+  if (!raw) return [];
+  let data: any[];
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  return data.map((c: any) => ({
     ...c,
     currentStreakStart: c.currentStreakStart ?? c.startDate,
     allHistory: c.allHistory ?? c.history ?? {},
     lastDailyRenewal: c.lastDailyRenewal ?? undefined,
   }));
-  return migrated;
 }
 
 export async function saveSobrietyCountersAsync(

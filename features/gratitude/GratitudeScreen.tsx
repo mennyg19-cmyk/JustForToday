@@ -27,7 +27,7 @@ import { isToday } from '@/utils/date';
 import { useGratitude } from './hooks/useGratitude';
 import { checkSimilarGratitude } from './similarity';
 import type { GratitudeEntry } from '@/lib/database/schema';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 
 /** Single delete helper: remove entry and optionally run callback (e.g. clear form). */
 function useDeleteEntry(
@@ -77,13 +77,18 @@ function formatGratitudeDate(isoDate: string): string {
 }
 
 export function GratitudeScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ from?: string }>();
-  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
+  const backToAnalytics = useBackToAnalytics();
   const iconColors = useIconColors();
   const { entries, loading, error, refresh, addEntry, updateEntry, removeEntry } = useGratitude();
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [duplicateModal, setDuplicateModal] = useState<{
@@ -189,7 +194,7 @@ export function GratitudeScreen() {
         className="flex-1"
         contentContainerStyle={{ padding: 24, paddingBottom: 96 }}
         refreshControl={
-          <RefreshControl refreshing={false} onRefresh={refresh} tintColor={iconColors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={iconColors.primary} />
         }
       >
         <View className="mb-4">

@@ -35,9 +35,15 @@ export function useInventory() {
       entry: Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>,
       options?: { createdAt?: string }
     ) => {
-      const created = await createInventoryEntry(entry, options);
-      setEntries((prev) => [created, ...prev]);
-      return created;
+      try {
+        const created = await createInventoryEntry(entry, options);
+        setEntries((prev) => [created, ...prev]);
+        return created;
+      } catch (err) {
+        logger.error('Failed to add inventory entry:', err);
+        setError(err instanceof Error ? err.message : 'Failed to add entry');
+        throw err;
+      }
     },
     []
   );
@@ -47,29 +53,39 @@ export function useInventory() {
       entryId: string,
       updates: Partial<Omit<InventoryEntry, 'id' | 'createdAt' | 'updatedAt'>>
     ) => {
-      const updated = await updateInventoryEntry(entryId, updates);
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? updated : e))
-      );
-      return updated;
+      try {
+        const updated = await updateInventoryEntry(entryId, updates);
+        setEntries((prev) =>
+          prev.map((e) => (e.id === entryId ? updated : e))
+        );
+        return updated;
+      } catch (err) {
+        logger.error('Failed to update inventory entry:', err);
+        setError(err instanceof Error ? err.message : 'Failed to update entry');
+        throw err;
+      }
     },
     []
   );
 
   const removeEntry = useCallback(async (entryId: string) => {
-    await deleteInventoryEntry(entryId);
-    setEntries((prev) => prev.filter((e) => e.id !== entryId));
+    try {
+      await deleteInventoryEntry(entryId);
+      setEntries((prev) => prev.filter((e) => e.id !== entryId));
+    } catch (err) {
+      logger.error('Failed to delete inventory entry:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete entry');
+      throw err;
+    }
   }, []);
 
   const step10Entries = entries.filter((e) => e.type === 'step10');
-  const fearEntries = entries.filter((e) => e.type === 'fear');
   const morningEntries = entries.filter((e) => e.type === 'morning');
   const nightlyEntries = entries.filter((e) => e.type === 'nightly');
 
   return {
     entries,
     step10Entries,
-    fearEntries,
     morningEntries,
     nightlyEntries,
     loading,

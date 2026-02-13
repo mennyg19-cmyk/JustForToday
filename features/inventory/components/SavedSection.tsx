@@ -4,7 +4,7 @@ import { Lock } from 'lucide-react-native';
 
 interface PrivacyLock {
   isLocked: boolean;
-  authenticate: (reason: string) => Promise<void>;
+  authenticate: (reason?: string) => Promise<boolean>;
 }
 
 interface Props {

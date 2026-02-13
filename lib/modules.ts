@@ -30,7 +30,7 @@ export interface ModuleDef {
 export const MODULES: ModuleDef[] = [
   { id: 'sobriety', label: 'Sobriety', description: 'Track recovery journey', href: '/sobriety', icon: Target, sectionId: 'sobriety' },
   { id: 'step10', label: 'Step 10', description: 'Spot-check personal inventory', href: '/inventory', icon: ClipboardList, sectionId: 'sobriety' },
-  { id: 'inventory', label: 'Step 11', description: 'Morning & nightly reflections', href: '/step11', icon: Calendar, sectionId: 'sobriety' },
+  { id: 'step11', label: 'Step 11', description: 'Morning & nightly reflections', href: '/step11', icon: Calendar, sectionId: 'sobriety' },
   { id: 'daily_renewal', label: 'Daily Renewal', description: '24-hour commitment timers', href: '/daily-renewal', icon: RotateCcw, sectionId: 'sobriety' },
   { id: 'habits', label: 'Habits', description: 'Track and build daily habits', href: '/habits', icon: CheckCircle, sectionId: 'daily_practice' },
   { id: 'gratitude', label: 'Gratitude Journal', description: 'Daily gratitude entries', href: '/gratitude', icon: Heart, sectionId: 'daily_practice' },

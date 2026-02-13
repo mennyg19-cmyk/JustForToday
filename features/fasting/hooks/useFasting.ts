@@ -39,23 +39,41 @@ export function useFasting() {
   }, [refresh]);
 
   const startFast = useCallback(async () => {
-    const created = await startFastingSession();
-    setSessions((prev) => [created, ...prev]);
-    setActiveSession(created);
-    return created;
+    try {
+      const created = await startFastingSession();
+      setSessions((prev) => [created, ...prev]);
+      setActiveSession(created);
+      return created;
+    } catch (err) {
+      logger.error('Failed to start fast:', err);
+      setError(err instanceof Error ? err.message : 'Failed to start fast');
+      throw err;
+    }
   }, []);
 
   const endFast = useCallback(async (sessionId: string) => {
-    const updated = await endFastingSession(sessionId);
-    setSessions((prev) => prev.map((s) => (s.id === sessionId ? updated : s)));
-    setActiveSession(null);
-    return updated;
+    try {
+      const updated = await endFastingSession(sessionId);
+      setSessions((prev) => prev.map((s) => (s.id === sessionId ? updated : s)));
+      setActiveSession(null);
+      return updated;
+    } catch (err) {
+      logger.error('Failed to end fast:', err);
+      setError(err instanceof Error ? err.message : 'Failed to end fast');
+      throw err;
+    }
   }, []);
 
   const addPastSession = useCallback(async (startAt: string, endAt: string) => {
-    const created = await createFastingSessionWithTimes(startAt, endAt);
-    setSessions((prev) => [created, ...prev]);
-    return created;
+    try {
+      const created = await createFastingSessionWithTimes(startAt, endAt);
+      setSessions((prev) => [created, ...prev]);
+      return created;
+    } catch (err) {
+      logger.error('Failed to add past session:', err);
+      setError(err instanceof Error ? err.message : 'Failed to add session');
+      throw err;
+    }
   }, []);
 
   const updateSession = useCallback(
@@ -63,22 +81,34 @@ export function useFasting() {
       sessionId: string,
       updates: { startAt?: string; endAt?: string | null }
     ) => {
-      const updated = await updateFastingSession(sessionId, updates);
-      setSessions((prev) => prev.map((s) => (s.id === sessionId ? updated : s)));
-      if (updated.endAt === null) {
-        setActiveSession(updated);
-      } else {
-        setActiveSession((a) => (a?.id === sessionId ? null : a));
+      try {
+        const updated = await updateFastingSession(sessionId, updates);
+        setSessions((prev) => prev.map((s) => (s.id === sessionId ? updated : s)));
+        if (updated.endAt === null) {
+          setActiveSession(updated);
+        } else {
+          setActiveSession((a) => (a?.id === sessionId ? null : a));
+        }
+        return updated;
+      } catch (err) {
+        logger.error('Failed to update session:', err);
+        setError(err instanceof Error ? err.message : 'Failed to update session');
+        throw err;
       }
-      return updated;
     },
     []
   );
 
   const deleteSession = useCallback(async (sessionId: string) => {
-    await deleteFastingSession(sessionId);
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-    setActiveSession((a) => (a?.id === sessionId ? null : a));
+    try {
+      await deleteFastingSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setActiveSession((a) => (a?.id === sessionId ? null : a));
+    } catch (err) {
+      logger.error('Failed to delete session:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete session');
+      throw err;
+    }
   }, []);
 
   return {

@@ -6,16 +6,15 @@ import { useIconColors } from '@/lib/iconTheme';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function CompleteStep({ onNext }: StepProps) {
+export function CompleteStep({ onNext, onBack }: StepProps) {
   const iconColors = useIconColors();
 
   return (
-    <OnboardingStep onNext={onNext} nextLabel="Let's Begin" showSkip={false}>
+    <OnboardingStep onNext={onNext} onBack={onBack} nextLabel="Let's Begin" showSkip={false}>
       <View className="gap-8 pt-20 items-center">
         {/* Success Icon */}
         <View className="w-28 h-28 rounded-full bg-primary/20 items-center justify-center">
@@ -55,6 +54,11 @@ export function CompleteStep({ onNext }: StepProps) {
             Your progress starts now.{'\n'}Welcome to the journey.
           </Text>
         </View>
+
+        {/* Goals note */}
+        <Text className="text-xs text-muted-foreground text-center px-6 mt-2">
+          Daily goals have smart defaults. You can customize them anytime in Settings.
+        </Text>
       </View>
     </OnboardingStep>
   );

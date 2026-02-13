@@ -1,15 +1,9 @@
 /**
- * AnalyticsScreen — data loading, drill-down modal, and dashboard layout.
+ * AnalyticsScreen — timeline analytics with drill-down modal.
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -20,10 +14,10 @@ import {
   getSuggestionsFromScores,
 } from '@/lib/analytics';
 import type { DayScore } from '@/lib/analytics';
-import { formatDateKey } from '@/utils/date';
+import { formatDateKey, parseDateKey } from '@/utils/date';
 import { useIconColors } from '@/lib/iconTheme';
 import { getAppVisibility } from '@/lib/settings/database';
-import type { AppVisibility, DailyCheckIn } from '@/lib/database/schema';
+import type { AppVisibility } from '@/lib/database/schema';
 import {
   Target,
   Footprints,
@@ -35,11 +29,10 @@ import {
   BookOpen,
 } from 'lucide-react-native';
 import { MODULE_HREFS } from '@/lib/modules';
-import { getAllCheckIns } from '@/features/checkin/database';
 import { LoadingView } from '@/components/common/LoadingView';
 import { ErrorView } from '@/components/common/ErrorView';
 import { logger } from '@/lib/logger';
-import { AnalyticsOptionA } from './AnalyticsOptionA';
+import { AnalyticsOptionC } from './AnalyticsOptionC';
 
 const DAYS_IN_YEAR = 52 * 7;
 const SECTION_HREFS: Record<string, string> = MODULE_HREFS;
@@ -48,7 +41,7 @@ const DRILLDOWN_ROWS: { label: string; pctKey: keyof DayScore; sectionId: string
   { label: 'Habits', pctKey: 'habitsPct', sectionId: 'habits', Icon: CheckCircle },
   { label: 'Steps', pctKey: 'stepsPct', sectionId: 'steps', Icon: Footprints },
   { label: 'Workouts', pctKey: 'workoutsPct', sectionId: 'workouts', Icon: Dumbbell },
-  { label: 'Inventory', pctKey: 'invPct', sectionId: 'inventory', Icon: Calendar },
+  { label: 'Step 11', pctKey: 'invPct', sectionId: 'step11', Icon: Calendar },
   { label: 'Gratitude', pctKey: 'gratitudePct', sectionId: 'gratitude', Icon: Heart },
   { label: 'Fasting', pctKey: 'fastingPct', sectionId: 'fasting', Icon: Clock },
   { label: 'Sobriety', pctKey: 'sobrietyPct', sectionId: 'sobriety', Icon: Target },
@@ -56,7 +49,7 @@ const DRILLDOWN_ROWS: { label: string; pctKey: keyof DayScore; sectionId: string
 ];
 
 function getWeekDateKeys(weekStartDateKey: string): string[] {
-  const d = new Date(weekStartDateKey + 'T00:00:00');
+  const d = parseDateKey(weekStartDateKey);
   return Array.from({ length: 7 }, (_, i) => {
     const x = new Date(d);
     x.setDate(d.getDate() + i);
@@ -89,18 +82,16 @@ export default function AnalyticsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drillDown, setDrillDown] = useState<{ type: 'day' | 'week' | 'month'; dateKey: string } | null>(null);
-  const [checkIns, setCheckIns] = useState<DailyCheckIn[]>([]);
+
   const load = useCallback(async () => {
     try {
       setError(null);
-      const [dailyYear, vis, allCheckIns] = await Promise.all([
+      const [dailyYear, vis] = await Promise.all([
         getDailyScoresForLastDays(DAYS_IN_YEAR),
         getAppVisibility(),
-        getAllCheckIns(),
       ]);
       setDayScoresYear(dailyYear);
       setVisibility(vis);
-      setCheckIns(allCheckIns);
     } catch (err) {
       logger.error('Analytics load failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
@@ -124,7 +115,7 @@ export default function AnalyticsScreen() {
     ? getSuggestionsFromScores(trackedDays, visibility)
     : [];
 
-  // --- Drill-down logic ---
+  // --- Drill-down logic (shared by both layouts) ---
   const drillDownBreakdown = useMemo(() => {
     if (!drillDown || !visibility) return null;
     const dayMap = new Map(dayScoresYear.map((d) => [d.dateKey, d]));
@@ -150,16 +141,16 @@ export default function AnalyticsScreen() {
   const drillDownTitle = useMemo(() => {
     if (!drillDown) return '';
     if (drillDown.type === 'day') {
-      const d = new Date(drillDown.dateKey + 'T00:00:00');
+      const d = parseDateKey(drillDown.dateKey);
       return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     }
     if (drillDown.type === 'week') {
-      const d = new Date(drillDown.dateKey + 'T00:00:00');
+      const d = parseDateKey(drillDown.dateKey);
       const end = new Date(d);
       end.setDate(d.getDate() + 6);
       return `Week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     }
-    const d = new Date(drillDown.dateKey + 'T00:00:00');
+    const d = parseDateKey(drillDown.dateKey);
     return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }, [drillDown]);
 
@@ -192,10 +183,9 @@ export default function AnalyticsScreen() {
             />
           }
         >
-          <AnalyticsOptionA
+          <AnalyticsOptionC
             dayScoresYear={dayScoresYear}
             suggestions={suggestions}
-            checkIns={checkIns}
             visibility={visibility}
             iconColors={iconColors}
             onDrillDown={handleDrillDown}
@@ -203,7 +193,7 @@ export default function AnalyticsScreen() {
         </ScrollView>
       )}
 
-      {/* Drill-down modal */}
+      {/* Drill-down modal (shared by both layouts) */}
       <ModalSurface
         visible={!!drillDown}
         onRequestClose={() => setDrillDown(null)}

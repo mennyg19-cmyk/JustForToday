@@ -12,9 +12,11 @@ import { StatusBar } from 'expo-status-bar';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Settings, Heart } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
+import { useIconColors } from '@/lib/iconTheme';
+import { themeColors } from '@/theme';
 import { initializeSync } from '@/lib/sync';
 import { ensureFirstLaunchInitialized, getOnboardingCompleted } from '@/lib/settings/database';
 import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
@@ -23,7 +25,8 @@ import '@/global.css';
 
 function TabNavigator() {
   const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const iconColors = useIconColors();
+  const colors = themeColors[colorScheme === 'dark' ? 'dark' : 'light'];
 
   useEffect(() => {
     initializeSync().catch((err) => {
@@ -36,24 +39,24 @@ function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: isDark ? '#D4B26A' : '#B48C3C',
-        tabBarInactiveTintColor: isDark ? '#807060' : '#A09080',
+        tabBarActiveTintColor: iconColors.primary,
+        tabBarInactiveTintColor: iconColors.muted,
         tabBarStyle: {
-          backgroundColor: isDark ? '#1A1408' : '#FFFDF7',
+          backgroundColor: colors.card,
           borderTopWidth: 0,
           // Elevated tab bar with subtle shadow
           ...(Platform.OS === 'ios'
             ? {
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: -3 },
-                shadowOpacity: isDark ? 0.15 : 0.06,
+                shadowOpacity: colorScheme === 'dark' ? 0.15 : 0.06,
                 shadowRadius: 12,
               }
             : { elevation: 8 }),
           paddingTop: 4,
         },
         tabBarLabelStyle: {
-          color: isDark ? '#C8BEA6' : '#4A3E28',
+          color: iconColors.muted,
           fontSize: 11,
           fontWeight: '600',
           letterSpacing: 0.3,
@@ -149,6 +152,7 @@ function HardMomentFAB() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const insets = useSafeAreaInsets();
 
   // Don't show the FAB when already on the hard moment screen
   if (pathname === '/hard-moment') return null;
@@ -172,7 +176,7 @@ function HardMomentFAB() {
     <Animated.View
       style={{
         position: 'absolute',
-        bottom: 90,
+        bottom: Math.max(insets.bottom, 16) + 60,
         right: 16,
         zIndex: 100,
         transform: [{ scale: scaleAnim }],

@@ -20,6 +20,7 @@ export function useCheckIn() {
   /** Most recent check-in regardless of date — used for "last commitment" display. */
   const [lastCheckIn, setLastCheckIn] = useState<DailyCheckIn | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   // Recompute todayKey when app comes to foreground (handles midnight crossover)
   const [todayKey, setTodayKey] = useState(() => getTodayKey());
   useEffect(() => {
@@ -35,6 +36,7 @@ export function useCheckIn() {
   /** Fetch today's check-in and the most recent check-in from the database. */
   const refresh = useCallback(async () => {
     try {
+      setError(null);
       const [checkIn, recent] = await Promise.all([
         getCheckInForDate(todayKey),
         getMostRecentCheckIn(),
@@ -42,6 +44,8 @@ export function useCheckIn() {
       setTodayCheckIn(checkIn);
       setLastCheckIn(recent);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load check-in';
+      setError(msg);
       logger.error('Failed to load check-in:', err);
     } finally {
       setLoading(false);
@@ -103,6 +107,7 @@ export function useCheckIn() {
     lastCheckIn,
     hasCheckedIn,
     loading,
+    error,
     refresh,
     submitCheckIn,
     toggleTodo,

@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { Text, TouchableOpacity, Share, Platform } from 'react-native';
 import { getQuoteOfTheDay } from '@/lib/quotes';
+import { logger } from '@/lib/logger';
 
 /**
  * Displays a daily stoic/inspirational quote. Same quote all day; changes at midnight.
@@ -27,8 +28,8 @@ export function DailyQuote() {
           title: 'Daily quote',
         });
       }
-    } catch {
-      // User cancelled or share failed – ignore
+    } catch (err) {
+      logger.error('Share failed:', err);
     }
   }, [quote.text, quote.author]);
 

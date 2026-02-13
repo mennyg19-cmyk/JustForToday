@@ -5,12 +5,13 @@
 
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
 
 interface OnboardingStepProps {
   children: React.ReactNode;
   onNext?: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
   nextLabel?: string;
   showSkip?: boolean;
@@ -19,6 +20,7 @@ interface OnboardingStepProps {
 export function OnboardingStep({
   children,
   onNext,
+  onBack,
   onSkip,
   nextLabel = 'Continue',
   showSkip = true,
@@ -31,9 +33,21 @@ export function OnboardingStep({
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View className="flex-1 px-6">
+        {/* Back button */}
+        {onBack && (
+          <TouchableOpacity
+            onPress={onBack}
+            className="flex-row items-center py-2 -ml-1"
+            activeOpacity={0.6}
+          >
+            <ChevronLeft size={22} color={iconColors.muted} />
+            <Text className="text-muted-foreground text-base">Back</Text>
+          </TouchableOpacity>
+        )}
+
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingTop: 40, paddingBottom: 20 }}
+          contentContainerStyle={{ paddingTop: onBack ? 16 : 40, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

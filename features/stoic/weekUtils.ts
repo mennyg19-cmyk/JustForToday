@@ -2,7 +2,7 @@ import {
   getStoicWeekMode,
   getStoicStartDate,
 } from '@/lib/settings/database';
-import { getWeekStart } from '@/utils/date';
+import { getWeekStart, parseDateKey } from '@/utils/date';
 
 /** Week number 1–52 by calendar year (Week 1 = week containing Jan 1, Sun–Sat). */
 export function getCalendarWeekNumber(date: Date): number {
@@ -16,7 +16,7 @@ export function getCalendarWeekNumber(date: Date): number {
 
 /** Week number 1–52 from a personal start date (Week 1 = week containing start date). */
 export function getPersonalWeekNumber(date: Date, startDateKey: string): number {
-  const start = new Date(startDateKey + 'T00:00:00');
+  const start = parseDateKey(startDateKey);
   const week1Sunday = getWeekStart(start);
   const todaySunday = getWeekStart(date);
   const diffMs = todaySunday.getTime() - week1Sunday.getTime();

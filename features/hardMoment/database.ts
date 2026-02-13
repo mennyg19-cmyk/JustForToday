@@ -1,10 +1,4 @@
-/**
- * Database operations for trusted contacts — the people a user can call
- * during a Hard Moment.
- *
- * Follows the standard SQLite + AsyncStorage fallback pattern.
- * Contacts are ONLY displayed in Hard Moment mode, never elsewhere.
- */
+/** Trusted contacts for Hard Moment (SQLite + AsyncStorage fallback). */
 
 import { getDatabase, isSQLiteAvailable } from '@/lib/database/db';
 import type { TrustedContact, TrustedContactRow } from '@/lib/database/schema';
@@ -20,7 +14,6 @@ function rowToContact(row: TrustedContactRow): TrustedContact {
   };
 }
 
-/** Get all trusted contacts, ordered by order_index. */
 export async function getTrustedContacts(): Promise<TrustedContact[]> {
   if (!(await isSQLiteAvailable())) {
     return asyncContacts.getTrustedContactsAsync();
@@ -33,7 +26,6 @@ export async function getTrustedContacts(): Promise<TrustedContact[]> {
   return rows.map(rowToContact);
 }
 
-/** Save (insert or update) a trusted contact. */
 export async function saveTrustedContact(contact: TrustedContact): Promise<void> {
   if (!(await isSQLiteAvailable())) {
     await asyncContacts.saveTrustedContactAsync(contact);
@@ -59,7 +51,6 @@ export async function saveTrustedContact(contact: TrustedContact): Promise<void>
   triggerSync();
 }
 
-/** Delete a trusted contact by ID. */
 export async function deleteTrustedContact(id: string): Promise<void> {
   if (!(await isSQLiteAvailable())) {
     await asyncContacts.deleteTrustedContactAsync(id);

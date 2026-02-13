@@ -21,12 +21,10 @@ import { formatDateWithWeekday } from '@/utils/date';
 import { useSteps } from '@/features/steps/hooks/useSteps';
 import { AddWorkoutModal } from '@/features/steps/components/AddWorkoutModal';
 import type { Workout } from '@/lib/database/schema';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 
 export function WorkoutsScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ from?: string }>();
-  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
+  const backToAnalytics = useBackToAnalytics();
   const iconColors = useIconColors();
   const {
     workoutsToday,
@@ -43,6 +41,13 @@ export function WorkoutsScreen() {
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [addWorkoutForDate, setAddWorkoutForDate] = useState<string | null>(null);
   const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
 
   const handleAddWorkout = useCallback(
     async (activityName: string, durationMinutes: number, caloriesBurned: number) => {
@@ -88,8 +93,8 @@ export function WorkoutsScreen() {
         contentContainerStyle={{ padding: 24, paddingBottom: 96 }}
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={refresh}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             tintColor={iconColors.primary}
           />
         }

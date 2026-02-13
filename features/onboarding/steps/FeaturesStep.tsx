@@ -1,63 +1,105 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, Switch } from 'react-native';
 import { OnboardingStep } from '../components/OnboardingStep';
-import { RotateCcw, Target, Calendar, CheckCircle, Heart, BookOpen, Footprints, Dumbbell, AlertCircle } from 'lucide-react-native';
+import { AlertCircle } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
+import { MODULES } from '@/lib/modules';
+import type { AppVisibility } from '@/lib/database/schema';
+import { saveAppVisibility, getAppVisibility } from '@/lib/settings/database';
+import { logger } from '@/lib/logger';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function FeaturesStep({ onNext, onSkip }: StepProps) {
-  const iconColors = useIconColors();
+/** Default visibility: recovery-core tools ON, others OFF. */
+function getDefaultToolState(): Record<keyof AppVisibility, boolean> {
+  const defaults: Record<string, boolean> = {};
+  const recoveryCore = new Set(['sobriety', 'daily_renewal', 'step10', 'step11']);
+  for (const m of MODULES) {
+    defaults[m.id] = recoveryCore.has(m.id as string);
+  }
+  return defaults as Record<keyof AppVisibility, boolean>;
+}
 
-  const features = [
-    { icon: RotateCcw, name: 'Daily Renewal', desc: 'Your 24-hour commitment' },
-    { icon: Target, name: 'Sobriety Counters', desc: 'Track what matters to you' },
-    { icon: Calendar, name: 'Step 10 Inventory', desc: 'Morning, nightly, and spot-check' },
-    { icon: CheckCircle, name: 'Habits', desc: 'Build good, break bad (no limits, no paywall)' },
-    { icon: Heart, name: 'Gratitude', desc: 'From an old-timer\'s wisdom' },
-    { icon: BookOpen, name: 'Stoic Wisdom', desc: 'My sponsor\'s recommendation' },
-    { icon: Footprints, name: 'Steps', desc: 'Self-esteem through movement' },
-    { icon: Dumbbell, name: 'Workouts', desc: 'Track your fitness journey' },
-    { icon: AlertCircle, name: 'Hard Moment', desc: 'When you need it most' },
-  ];
+export function FeaturesStep({ onNext, onBack, onSkip }: StepProps) {
+  const iconColors = useIconColors();
+  const [tools, setTools] = useState<Record<keyof AppVisibility, boolean>>(getDefaultToolState);
+  const [saving, setSaving] = useState(false);
+
+  const toggleTool = useCallback((id: keyof AppVisibility) => {
+    setTools((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
+  const handleNext = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      // Merge with existing visibility (in case there are defaults already set)
+      const existing = await getAppVisibility();
+      const merged = { ...existing, ...tools };
+      await saveAppVisibility(merged as AppVisibility);
+    } catch (err) {
+      logger.error('Failed to save tool selections:', err);
+    }
+    onNext();
+  }, [saving, tools, onNext]);
 
   return (
-    <OnboardingStep onNext={onNext} onSkip={onSkip} nextLabel="Let's Set Up">
+    <OnboardingStep onNext={handleNext} onBack={onBack} onSkip={onSkip} nextLabel="Continue">
       <View className="gap-6">
-        {/* Title */}
         <Text className="text-3xl font-bold text-foreground text-center">
-          Your Daily Tools
+          Choose Your Tools
         </Text>
 
         <Text className="text-base text-muted-foreground text-center leading-7">
-          Each feature is here because it helped someone in recovery:
+          You can always change these later in Settings.{'\n'}Start with what feels right.
         </Text>
 
-        {/* Features list */}
-        <View className="gap-3 pt-2">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
+        {/* Tool switches */}
+        <View className="gap-1 pt-2">
+          {MODULES.map((mod) => {
+            const Icon = mod.icon;
             return (
-              <View key={index} className="flex-row items-start gap-3 py-2">
-                <View className="pt-0.5">
+              <View
+                key={mod.id}
+                className="flex-row items-center justify-between py-3 px-1 border-b border-border/50"
+              >
+                <View className="flex-row items-center gap-3 flex-1">
                   <Icon size={20} color={iconColors.primary} />
+                  <View className="flex-1">
+                    <Text className="text-base font-medium text-foreground">
+                      {mod.label}
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">
+                      {mod.description}
+                    </Text>
+                  </View>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-foreground">
-                    {feature.name}
-                  </Text>
-                  <Text className="text-sm text-muted-foreground leading-5">
-                    {feature.desc}
-                  </Text>
-                </View>
+                <Switch
+                  value={tools[mod.id]}
+                  onValueChange={() => toggleTool(mod.id)}
+                  trackColor={{ false: '#767577', true: iconColors.primary }}
+                />
               </View>
             );
           })}
+        </View>
+
+        {/* Hard Moment — always available */}
+        <View className="flex-row items-center gap-3 py-3 px-1 bg-muted/30 rounded-xl mt-2">
+          <AlertCircle size={20} color={iconColors.primary} />
+          <View className="flex-1">
+            <Text className="text-base font-medium text-foreground">
+              Hard Moment
+            </Text>
+            <Text className="text-xs text-muted-foreground">
+              Always available — when you need it most
+            </Text>
+          </View>
+          <Text className="text-xs text-primary font-medium">Always On</Text>
         </View>
       </View>
     </OnboardingStep>

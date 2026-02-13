@@ -1,6 +1,6 @@
 # Codebase Appraisal — Refactoring & Consistency
 
-Brutal, honest review of the Just For Today codebase: helpers, file structure, styling, and consistency.
+Brutal, honest review of the LifeTrackPro-Clean codebase: helpers, file structure, styling, and consistency.
 
 ---
 

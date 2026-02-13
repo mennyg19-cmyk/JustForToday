@@ -46,7 +46,12 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     [themeVars, activeColorScheme]
   );
 
-  if (!loaded) return null;
+  if (!loaded) {
+    // Show a themed empty view while loading to avoid a white flash
+    return (
+      <View style={themeVars} className={`${activeColorScheme} flex-1 bg-background`} />
+    );
+  }
 
   return (
     <ThemeStyleProvider value={themeContextValue}>

@@ -1,19 +1,4 @@
-/**
- * Rotating encouragement messages — calm, short, non-repetitive.
- *
- * Used after check-in, after inventory, during hard moments, and on
- * the home screen. Never preachy. Never motivational. Think: a steady
- * companion, not a coach.
- *
- * Selection is deterministic per day+context so the same message appears
- * all day for a given context, but different contexts show different messages.
- *
- * If the user has set a name in their profile, some messages use it
- * for a more personal touch without being excessive.
- *
- * Relied on by: CheckInFlow, HardMomentScreen, home screen (index.tsx),
- * InventoryScreen. If you duplicate this logic, messages will drift out of sync.
- */
+/** Rotating encouragement messages — deterministic per day+context. */
 
 export type EncouragementContext =
   | 'afterCheckIn'
@@ -23,10 +8,7 @@ export type EncouragementContext =
   | 'returnAfterAbsence'
   | 'noCommitment';
 
-/**
- * Base messages — {name} is replaced with the user's first name if available,
- * or removed if not.
- */
+/** Base messages — {name} replaced with user's first name if available. */
 const MESSAGES: Record<EncouragementContext, string[]> = {
   afterCheckIn: [
     'Just today.',
@@ -81,10 +63,7 @@ const MESSAGES: Record<EncouragementContext, string[]> = {
   ],
 };
 
-/**
- * Simple numeric hash of a string — used to pick a message deterministically.
- * Same date + same context = same message all day.
- */
+/** Numeric hash for deterministic message selection. */
 function hashString(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) {
@@ -93,10 +72,7 @@ function hashString(s: string): number {
   return Math.abs(h);
 }
 
-/**
- * Replace {name} placeholder with the user's first name, or clean it up
- * if no name is provided (removes trailing ", {name}" or leading "{name}, " etc).
- */
+/** Replace {name} with user's name, or remove placeholder if none. */
 function personalize(message: string, name?: string): string {
   if (name && name.trim()) {
     return message.replace('{name}', name.trim());
@@ -108,34 +84,19 @@ function personalize(message: string, name?: string): string {
     .replace('{name}', '');
 }
 
-/**
- * Get a single encouragement message for the given context.
- * Deterministic per calendar day so the user sees the same message
- * throughout the day, but it rotates daily.
- *
- * Pass the user's name to personalize messages that include {name}.
- */
+/** Get encouragement message for context — deterministic per day. */
 export function getEncouragement(
   context: EncouragementContext,
   date: Date = new Date(),
   name?: string
 ): string {
   const pool = MESSAGES[context];
-  const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const idx = hashString(dateKey + context) % pool.length;
   return personalize(pool[idx], name);
 }
 
-// ---------------------------------------------------------------------------
-// Commitment-aware encouragement for the Hard Moment screen
-// ---------------------------------------------------------------------------
-
-/**
- * Build a commitment-aware encouragement string.
- * @param remainingMs  Milliseconds remaining in the commitment, or null/0.
- * @param name         User's first name for personalization.
- * @param rotatingIdx  Index into the hardMoment pool for the rotating suffix.
- */
+/** Commitment-aware encouragement for Hard Moment screen. */
 export function getCommitmentEncouragement(
   remainingMs: number | null,
   name?: string,

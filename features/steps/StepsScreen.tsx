@@ -16,16 +16,16 @@ import { ErrorView } from '@/components/common/ErrorView';
 import { CARD as cardClass } from '@/components/cardStyles';
 import { useIconColors } from '@/lib/iconTheme';
 import { formatDateShort, formatDateWithWeekday } from '@/utils/date';
+import { scorePercent } from '@/utils/format';
 import { useSteps, type RecentStepsDay } from './hooks/useSteps';
 import { EditStepsModal } from './components/EditStepsModal';
 import { HeatmapGrid } from '@/components/HeatmapGrid';
-import { Link, useRouter, useLocalSearchParams } from 'expo-router';
+import { Link } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 
 export function StepsScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ from?: string }>();
+  const backToAnalytics = useBackToAnalytics();
   const iconColors = useIconColors();
-  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
   const {
     stepsToday,
     stepsGoal,
@@ -41,6 +41,13 @@ export function StepsScreen() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editDay, setEditDay] = useState<RecentStepsDay | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
 
   const handleSaveSteps = useCallback(
     async (steps: number, dateKey?: string) => {
@@ -83,8 +90,8 @@ export function StepsScreen() {
         contentContainerStyle={{ padding: 24, paddingBottom: 96 }}
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={refresh}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             tintColor={iconColors.primary}
           />
         }
@@ -152,7 +159,7 @@ export function StepsScreen() {
             {recentDaysWithWorkoutsAndCalories.map((day) => {
               const stepsPct =
                 stepsGoal > 0
-                  ? Math.min(100, Math.round((day.steps_count / stepsGoal) * 100))
+                  ? scorePercent(day.steps_count, stepsGoal)
                   : null;
               const stepsLabel =
                 stepsPct !== null

@@ -19,7 +19,8 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useBackToAnalytics } from '@/hooks/useBackToAnalytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RotateCcw, CheckCircle } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
@@ -167,8 +168,7 @@ function RenewalTimerRing({
 
 export function DailyRenewalScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ from?: string }>();
-  const backToAnalytics = params.from === 'analytics' ? () => router.replace('/analytics') : undefined;
+  const backToAnalytics = useBackToAnalytics();
   const { counters, loading, error, refresh, renewDailyCommitment, currentTime } = useSobriety();
   const { todayCheckIn, hasCheckedIn, refresh: refreshCheckIn } = useCheckIn();
   const iconColors = useIconColors();
@@ -366,8 +366,8 @@ export function DailyRenewalScreen() {
                         size={76}
                         strokeWidth={6}
                         trackColor={iconColors.muted}
-                        fillColor={countdown === 'Renew' ? '#C8842A' : iconColors.primary}
-                        textColor={countdown === 'Renew' ? '#C8842A' : iconColors.foreground}
+                        fillColor={countdown === 'Renew' ? iconColors.accent : iconColors.primary}
+                        textColor={countdown === 'Renew' ? iconColors.accent : iconColors.foreground}
                       />
                     </View>
 

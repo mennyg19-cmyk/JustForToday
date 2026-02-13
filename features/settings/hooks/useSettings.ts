@@ -39,7 +39,7 @@ const DEFAULT_VISIBILITY: AppVisibility = {
   sobriety: true,
   daily_renewal: true,
   fasting: true,
-  inventory: true,
+  step11: true,
   step10: true,
   steps: true,
   workouts: true,

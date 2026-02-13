@@ -10,14 +10,14 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppHeader } from '@/components/AppHeader';
+import { LoadingView } from '@/components/common/LoadingView';
 import { useColorScheme } from 'nativewind';
-import { useIconColors } from '@/lib/iconTheme';
 import { getReadings, type GroundingReading } from '@/lib/groundingReadings';
 import { logger } from '@/lib/logger';
 
@@ -31,7 +31,6 @@ export function ReaderScreen() {
   const params = useLocalSearchParams<{ readingId: string }>();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const iconColors = useIconColors();
 
   const [reading, setReading] = useState<GroundingReading | null>(null);
   const [loading, setLoading] = useState(true);
@@ -169,9 +168,7 @@ export function ReaderScreen() {
     return (
       <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Reader" showBack />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={iconColors.primary} />
-        </View>
+        <LoadingView />
       </SafeAreaView>
     );
   }
@@ -234,21 +231,10 @@ export function ReaderScreen() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                justifyContent: 'center',
-                alignItems: 'center',
                 backgroundColor: isDark ? 'rgba(22, 18, 12, 0.9)' : 'rgba(252, 249, 242, 0.9)',
               }}
             >
-              <ActivityIndicator size="large" color={iconColors.primary} />
-              <Text
-                style={{
-                  color: iconColors.muted,
-                  marginTop: 12,
-                  fontSize: 14,
-                }}
-              >
-                Loading {reading.title}...
-              </Text>
+              <LoadingView message={`Loading ${reading.title}...`} />
             </View>
           )}
           allowFileAccess

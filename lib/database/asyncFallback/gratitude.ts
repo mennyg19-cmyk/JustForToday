@@ -5,8 +5,12 @@ const GRATITUDE_KEY = 'lifetrack_gratitude';
 
 export async function getGratitudeEntriesAsync(): Promise<GratitudeEntry[]> {
   const raw = await AsyncStorage.getItem(GRATITUDE_KEY);
-  const data = raw ? JSON.parse(raw) : [];
-  return data;
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
 }
 
 export async function createGratitudeEntryAsync(

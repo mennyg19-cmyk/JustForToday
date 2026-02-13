@@ -6,12 +6,11 @@ import { useIconColors } from '@/lib/iconTheme';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function PhilosophyStep({ onNext, onSkip }: StepProps) {
+export function PhilosophyStep({ onNext, onBack, onSkip }: StepProps) {
   const iconColors = useIconColors();
 
   const principles = [
@@ -22,7 +21,7 @@ export function PhilosophyStep({ onNext, onSkip }: StepProps) {
   ];
 
   return (
-    <OnboardingStep onNext={onNext} onSkip={onSkip} showSkip={false}>
+    <OnboardingStep onNext={onNext} onBack={onBack} onSkip={onSkip} showSkip={false}>
       <View className="gap-6">
         {/* Title */}
         <Text className="text-3xl font-bold text-foreground text-center">

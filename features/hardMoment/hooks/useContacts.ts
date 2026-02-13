@@ -20,12 +20,16 @@ const MAX_CONTACTS = 5;
 export function useContacts() {
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
+      setError(null);
       const list = await getTrustedContacts();
       setContacts(list);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load contacts';
+      setError(msg);
       logger.error('Failed to load trusted contacts:', err);
     } finally {
       setLoading(false);
@@ -70,6 +74,7 @@ export function useContacts() {
   return {
     contacts,
     loading,
+    error,
     canAddMore,
     refresh,
     addContact,

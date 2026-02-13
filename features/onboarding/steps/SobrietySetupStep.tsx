@@ -1,19 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { OnboardingStep } from '../components/OnboardingStep';
 import { Target, Plus, Calendar } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
 import { createSobrietyCounter } from '@/features/sobriety/database';
+import { getProgramType } from '@/lib/settings/database';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function SobrietySetupStep({ onNext, onSkip }: StepProps) {
+export function SobrietySetupStep({ onNext, onBack, onSkip }: StepProps) {
   const iconColors = useIconColors();
+  const autoAdvanced = useRef(false);
+
+  useEffect(() => {
+    if (autoAdvanced.current) return;
+    getProgramType().then((type) => {
+      if (type === 'support') {
+        autoAdvanced.current = true;
+        onNext();
+      }
+    }).catch(() => {
+      // Couldn't read program type — continue with sobriety setup
+    });
+  }, [onNext]);
   const [displayName, setDisplayName] = useState('');
   const [actualName, setActualName] = useState('');
   const [useToday, setUseToday] = useState(true);
@@ -69,7 +82,7 @@ export function SobrietySetupStep({ onNext, onSkip }: StepProps) {
   };
 
   return (
-    <OnboardingStep onNext={onNext} onSkip={onSkip}>
+    <OnboardingStep onNext={onNext} onBack={onBack} onSkip={onSkip}>
       <View className="gap-6">
         {/* Icon */}
         <View className="items-center">
@@ -155,17 +168,23 @@ export function SobrietySetupStep({ onNext, onSkip }: StepProps) {
             </TouchableOpacity>
           </View>
           {!useToday && (
-            <View className="flex-row items-center gap-3 mt-1">
-              <Calendar size={18} color={iconColors.primary} />
-              <TextInput
-                value={startDateText}
-                onChangeText={setStartDateText}
-                placeholder="MM/DD/YYYY"
-                placeholderTextColor={iconColors.muted}
-                className="flex-1 bg-input text-input-foreground text-base px-4 py-3 rounded-xl border border-border"
-                keyboardType="numbers-and-punctuation"
-                returnKeyType="done"
-              />
+            <View className="gap-2 mt-1">
+              <View className="flex-row items-center gap-3">
+                <Calendar size={18} color={iconColors.primary} />
+                <TextInput
+                  value={startDateText}
+                  onChangeText={setStartDateText}
+                  placeholder="MM/DD/YYYY or YYYY-MM-DD"
+                  placeholderTextColor={iconColors.muted}
+                  className="flex-1 bg-input text-input-foreground text-base px-4 py-3 rounded-xl border border-border"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={10}
+                  returnKeyType="done"
+                />
+              </View>
+              <Text className="text-xs text-muted-foreground ml-7">
+                Enter the date you started (must be today or earlier)
+              </Text>
             </View>
           )}
         </View>

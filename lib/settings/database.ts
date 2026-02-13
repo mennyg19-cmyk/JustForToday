@@ -9,7 +9,7 @@ import type {
 } from '../database/schema';
 import { DEFAULT_DASHBOARD_ORDER, DEFAULT_SECTION_ORDER } from '../modules';
 import * as asyncSettings from '../database/asyncFallback/settings';
-import { DEFAULT_GOALS } from '@/lib/constants';
+import { DEFAULT_GOALS, DEFAULT_VISIBILITY, DEFAULT_SECTION_VISIBILITY } from '@/lib/constants';
 
 const APP_FIRST_OPEN_DATE_KEY = 'app_first_open_date';
 
@@ -36,12 +36,8 @@ const SETTINGS_KEYS = {
   SAF_FOLDER_URI: 'saf_folder_uri',
   COMMITMENT_PROMPT_DISMISSED_DATE: 'commitment_prompt_dismissed_date',
   PRIVACY_LOCK_ENABLED: 'privacy_lock_enabled',
-  PROGRAM_TYPE: 'program_type',
 } as const;
 
-/**
- * Get a setting value from the database (only used when SQLite is available)
- */
 async function getSetting<T>(key: string, defaultValue: T): Promise<T> {
   const db = await getDatabase();
   const result = await db.getFirstAsync<{ value_json: string }>(
@@ -60,9 +56,6 @@ async function getSetting<T>(key: string, defaultValue: T): Promise<T> {
   }
 }
 
-/**
- * Set a setting value in the database (only used when SQLite is available)
- */
 async function setSetting<T>(key: string, value: T): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
@@ -117,24 +110,6 @@ export async function saveGoals(goals: AppGoals): Promise<void> {
   await setSetting(SETTINGS_KEYS.GOALS, goals);
 }
 
-const DEFAULT_VISIBILITY: AppVisibility = {
-  habits: true,
-  sobriety: true,
-  daily_renewal: true,
-  fasting: true,
-  inventory: true,
-  step10: true,
-  steps: true,
-  workouts: true,
-  gratitude: true,
-  stoic: true,
-};
-
-const DEFAULT_SECTION_VISIBILITY: SectionVisibility = {
-  health: true,
-  sobriety: true,
-  daily_practice: true,
-};
 
 export async function getAppVisibility(): Promise<AppVisibility> {
   const raw = !(await isSQLiteAvailable())
@@ -422,6 +397,25 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
   await setSetting(SETTINGS_KEYS.PROFILE, profile);
 }
 
+// -- Program Type --
+
+export type ProgramType = 'recovery' | 'support';
+
+export async function getProgramType(): Promise<ProgramType> {
+  if (!(await isSQLiteAvailable())) {
+    return asyncSettings.getProgramTypeAsync();
+  }
+  return getSetting<ProgramType>('program_type', 'recovery');
+}
+
+export async function setProgramType(type: ProgramType): Promise<void> {
+  if (!(await isSQLiteAvailable())) {
+    await asyncSettings.setProgramTypeAsync(type);
+    return;
+  }
+  await setSetting('program_type', type);
+}
+
 // -- Onboarding --
 
 export async function getOnboardingCompleted(): Promise<boolean> {
@@ -546,23 +540,4 @@ export async function resetDisplayDefaults(): Promise<void> {
     saveDashboardOrder([...DEFAULT_DASHBOARD_ORDER]),
     saveDashboardSectionOrder([...DEFAULT_SECTION_ORDER]),
   ]);
-}
-
-// -- Program type (recovery vs support/Al-Anon) --
-
-export type ProgramType = 'recovery' | 'support';
-
-export async function getProgramType(): Promise<ProgramType> {
-  if (!(await isSQLiteAvailable())) {
-    return asyncSettings.getProgramTypeAsync();
-  }
-  return getSetting<ProgramType>(SETTINGS_KEYS.PROGRAM_TYPE, 'recovery');
-}
-
-export async function setProgramType(type: ProgramType): Promise<void> {
-  if (!(await isSQLiteAvailable())) {
-    await asyncSettings.setProgramTypeAsync(type);
-    return;
-  }
-  await setSetting(SETTINGS_KEYS.PROGRAM_TYPE, type);
 }

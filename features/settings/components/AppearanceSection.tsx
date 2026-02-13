@@ -9,7 +9,7 @@ import {
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { DraggableList, type DraggableItem } from '@/components/DraggableList';
 import { SECTIONS, THEME_OPTIONS } from '../constants';
-import type { AppVisibility, SectionId } from '@/lib/database/schema';
+import type { AppVisibility, SectionId, SectionVisibility } from '@/lib/database/schema';
 
 const cardClass = 'bg-card rounded-xl p-4 border border-border';
 
@@ -24,7 +24,7 @@ interface Props {
   orderedSections: (typeof SECTIONS)[number][];
   orderedSectionIds: SectionId[];
   sectionGroups: Record<SectionId, { title: string; moduleIds: (keyof AppVisibility)[] }>;
-  sectionVisibility: Record<string, boolean>;
+  sectionVisibility: SectionVisibility;
   dashboardOrder: string[];
   onThemeSelect: (mode: (typeof THEME_OPTIONS)[number]['mode']) => void;
   onToggleCompactView: (value: boolean) => void;

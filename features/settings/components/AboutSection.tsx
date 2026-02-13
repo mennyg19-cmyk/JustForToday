@@ -16,7 +16,7 @@ export function AboutSection({ iconColors, onOpenStory }: Props) {
       <View className="gap-3">
         <View className={`${cardClass}`}>
           <View className="flex-row items-center justify-between mb-1">
-            <Text className="text-foreground font-semibold text-sm">Version 1.0.0</Text>
+            <Text className="text-foreground font-semibold text-sm">Version 4.1.5</Text>
             <Text className="text-muted-foreground text-sm">Feb 2026</Text>
           </View>
           <Text className="text-muted-foreground text-xs">Built by Menny, baked by Daniel</Text>

@@ -9,7 +9,7 @@ import { getStoicReflectionDoneForDates } from '@/features/stoic/database';
 import { getGoals } from '@/lib/settings';
 import { getAppVisibility, getModuleSettings } from '@/lib/settings/database';
 import type { AppVisibility, ModuleId, ModuleSettingsMap } from '@/lib/database/schema';
-import { getDateKeysForLastDays, formatDateKey } from '@/utils/date';
+import { getDateKeysForLastDays, formatDateKey, parseDateKey, getWeekStart } from '@/utils/date';
 
 function isDateInTrackingRange(
   dateKey: string,
@@ -150,7 +150,7 @@ export async function getDailyScoresForLastDays(days: number): Promise<DayScore[
     const parts: number[] = [];
     if (visibility.habits && count('habits') && isDateInTrackingRange(dateKey, 'habits', moduleSettings)) parts.push(habitsPct);
     if (visibility.steps && count('steps') && isDateInTrackingRange(dateKey, 'steps', moduleSettings)) parts.push(stepsPct);
-    if (visibility.inventory && count('inventory') && isDateInTrackingRange(dateKey, 'inventory', moduleSettings)) parts.push(invPct);
+    if (visibility.step11 && count('step11') && isDateInTrackingRange(dateKey, 'step11', moduleSettings)) parts.push(invPct);
     if (visibility.gratitude && count('gratitude') && isDateInTrackingRange(dateKey, 'gratitude', moduleSettings)) parts.push(gratitudePct);
     if (visibility.fasting && count('fasting') && isDateInTrackingRange(dateKey, 'fasting', moduleSettings)) parts.push(fastingPct);
     if (visibility.workouts && count('workouts') && isDateInTrackingRange(dateKey, 'workouts', moduleSettings)) parts.push(workoutsPct);
@@ -212,10 +212,8 @@ export async function getWeeklyScoresForLastWeeks(
   const dayScores = await getDailyScoresForLastDays(weeks * 7 + 7);
   const byWeek = new Map<string, DayScore[]>();
   for (const d of dayScores) {
-    const date = new Date(d.dateKey + 'T00:00:00');
-    const sun = new Date(date);
-    sun.setDate(date.getDate() - date.getDay());
-    const weekKey = formatDateKey(sun);
+    const date = parseDateKey(d.dateKey);
+    const weekKey = formatDateKey(getWeekStart(date));
     if (!byWeek.has(weekKey)) byWeek.set(weekKey, []);
     byWeek.get(weekKey)!.push(d);
   }
@@ -227,7 +225,7 @@ export async function getWeeklyScoresForLastWeeks(
       tracked.length > 0
         ? Math.round(tracked.reduce((a, b) => a + b.score, 0) / tracked.length)
         : 0;
-    const d = new Date(dateKey + 'T00:00:00');
+    const d = parseDateKey(dateKey);
     const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
     return { dateKey, score: Math.min(100, score), label };
   });
@@ -258,7 +256,7 @@ export async function getMonthlyScoresForLastMonths(
       tracked.length > 0
         ? Math.round(tracked.reduce((a, b) => a + b.score, 0) / tracked.length)
         : 0;
-    const d = new Date(dateKey + 'T00:00:00');
+    const d = parseDateKey(dateKey);
     const label = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
     return { dateKey, score: Math.min(100, score), label };
   });
@@ -283,12 +281,12 @@ export function getSuggestionsFromScores(
   const areas: { id: string; label: string; avgPct: number; visible: boolean }[] = [
     { id: 'habits', label: 'Habits', avgPct: sum('habitsPct') / n, visible: visibility.habits },
     { id: 'steps', label: 'Steps', avgPct: sum('stepsPct') / n, visible: visibility.steps },
-    { id: 'inventory', label: 'Inventory', avgPct: sum('invPct') / n, visible: visibility.inventory },
+    { id: 'step11', label: 'Step 11', avgPct: sum('invPct') / n, visible: visibility.step11 },
     { id: 'gratitude', label: 'Gratitude', avgPct: sum('gratitudePct') / n, visible: visibility.gratitude },
     { id: 'fasting', label: 'Fasting', avgPct: sum('fastingPct') / n, visible: visibility.fasting },
     { id: 'workouts', label: 'Exercise', avgPct: sum('workoutsPct') / n, visible: visibility.workouts },
     { id: 'sobriety', label: 'Sobriety', avgPct: sum('sobrietyPct') / n, visible: visibility.sobriety },
-    { id: 'daily_renewal', label: 'Daily Renewal', avgPct: sum('sobrietyPct') / n, visible: visibility.daily_renewal && visibility.sobriety },
+    // daily_renewal has no independent metric — omitted from suggestions to avoid duplicating sobriety
     { id: 'stoic', label: 'Stoic Handbook', avgPct: sum('stoicPct') / n, visible: visibility.stoic },
   ];
   const sorted = areas

@@ -6,13 +6,12 @@
  *   - SettingsModals (all 8 modals in one file)
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
@@ -21,7 +20,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import { AppHeader } from '@/components/AppHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useIconColors } from '@/lib/iconTheme';
+import { LoadingView } from '@/components/common/LoadingView';
+import { useIconColors, useSwitchColors } from '@/lib/iconTheme';
 import { useSettings } from './hooks/useSettings';
 import { SECTIONS, THEME_OPTIONS, DEFAULT_GOALS } from './constants';
 import type { TrustedContact } from '@/lib/database/schema';
@@ -35,6 +35,7 @@ import {
 import { enableSync, disableSync, forceSync } from '@/lib/sync';
 import { getLastSyncTimestamp } from '@/lib/sync/cloudProvider';
 import { useContacts } from '@/features/hardMoment/hooks/useContacts';
+import { useContactPicker } from '@/features/hardMoment/hooks/useContactPicker';
 import {
   getReadings,
   toggleReadingVisibility,
@@ -44,8 +45,7 @@ import {
 } from '@/lib/groundingReadings';
 import { exportToFile } from '@/lib/dataManagement';
 import { usePrivacyLock } from '@/hooks/usePrivacyLock';
-import { getPrivacyLockEnabled, setPrivacyLockEnabled, getProgramType, setProgramType, saveAppVisibility } from '@/lib/settings/database';
-import type { ProgramType } from '@/lib/settings/database';
+import { getPrivacyLockEnabled, setPrivacyLockEnabled } from '@/lib/settings/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '@/lib/logger';
 
@@ -122,14 +122,7 @@ export function SettingsScreen() {
   // Contacts
   const { contacts, canAddMore, addContact, removeContact, refresh: refreshContacts } = useContacts();
   const [showContactsModal, setShowContactsModal] = useState(false);
-  const [showLabelModal, setShowLabelModal] = useState(false);
-  const [pendingContact, setPendingContact] = useState<{ name: string; phone: string } | null>(null);
-
-  useEffect(() => {
-    if (!pendingContact || showLabelModal) return;
-    const timer = setTimeout(() => setShowLabelModal(true), 500);
-    return () => clearTimeout(timer);
-  }, [pendingContact, showLabelModal]);
+  const contactPicker = useContactPicker({ contacts, addContact });
 
   // Privacy
   const privacyLock = usePrivacyLock();
@@ -144,19 +137,10 @@ export function SettingsScreen() {
   const [newReadingTitle, setNewReadingTitle] = useState('');
   const [newReadingSubtitle, setNewReadingSubtitle] = useState('');
 
-  // Program type
-  const [programType, setProgramTypeState] = useState<import('@/lib/settings/database').ProgramType>('recovery');
-
   // Story
   const [showStoryModal, setShowStoryModal] = useState(false);
 
-  const switchColors = useMemo(
-    () => ({
-      trackColor: { false: iconColors.muted, true: iconColors.primary },
-      thumbColor: iconColors.primaryForeground,
-    }),
-    [iconColors]
-  );
+  const switchColors = useSwitchColors();
 
   // ---- Data loading ----
 
@@ -181,7 +165,6 @@ export function SettingsScreen() {
         getSafFolderUri().then(setSafFolder).catch(() => {});
       }
       getPrivacyLockEnabled().then(setPrivacyLockOn).catch(() => {});
-      getProgramType().then(setProgramTypeState).catch(() => {});
     }, [fetchSettings, loadReadings, refreshContacts])
   );
 
@@ -196,24 +179,6 @@ export function SettingsScreen() {
   const updateProfileField = useCallback((field: keyof UserProfile, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
   }, []);
-
-  const handleChangeProgramType = useCallback(async (type: ProgramType) => {
-    setProgramTypeState(type);
-    await setProgramType(type);
-    // Auto-toggle sobriety & daily_renewal visibility based on program type
-    if (visibility) {
-      const updated = { ...visibility };
-      if (type === 'support') {
-        updated.sobriety = false;
-        updated.daily_renewal = false;
-      } else {
-        updated.sobriety = true;
-        updated.daily_renewal = true;
-      }
-      await saveAppVisibility(updated);
-      fetchSettings();
-    }
-  }, [visibility, fetchSettings]);
 
   const handleToggleCompactView = useCallback(async (value: boolean) => {
     setCompactViewState(value);
@@ -323,47 +288,6 @@ export function SettingsScreen() {
   }, [handleClearAll]);
 
   // ---- Contacts handlers ----
-
-  const handleAddContact = useCallback(async () => {
-    try {
-      const Contacts = await import('expo-contacts');
-      if (Platform.OS !== 'ios') {
-        const { status } = await Contacts.requestPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Contacts access needed', 'Allow access in Settings to add a trusted contact.');
-          return;
-        }
-      }
-      const contact = await Contacts.presentContactPickerAsync();
-      if (!contact) return;
-      const phone = contact.phoneNumbers?.[0]?.number;
-      if (!phone) {
-        Alert.alert('No phone number', 'This contact doesn\u2019t have a phone number.');
-        return;
-      }
-      const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unknown';
-      setPendingContact({ name, phone });
-    } catch (err) {
-      logger.error('Contact picker error:', err);
-      Alert.alert('Error', 'Could not open contacts.');
-    }
-  }, []);
-
-  const handleSaveWithLabel = useCallback(
-    async (label: string) => {
-      if (!pendingContact) return;
-      const contact: TrustedContact = {
-        id: `contact_${Date.now()}`,
-        name: pendingContact.name,
-        label,
-        phone: pendingContact.phone,
-      };
-      await addContact(contact);
-      setPendingContact(null);
-      setShowLabelModal(false);
-    },
-    [pendingContact, addContact]
-  );
 
   const handleRemoveContact = useCallback(
     (contact: TrustedContact) => {
@@ -478,7 +402,7 @@ export function SettingsScreen() {
 
   const effectiveVisibility = visibility ?? {
     habits: true, sobriety: true, daily_renewal: true, fasting: true,
-    inventory: true, step10: true, steps: true, workouts: true,
+    step11: true, step10: true, steps: true, workouts: true,
     gratitude: true, stoic: true,
   };
   const effectiveGoals = goals ?? { ...DEFAULT_GOALS };
@@ -489,9 +413,7 @@ export function SettingsScreen() {
     return (
       <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
         <AppHeader title="Settings" rightSlot={<ThemeToggle />} />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={iconColors.primary} />
-        </View>
+        <LoadingView />
       </SafeAreaView>
     );
   }
@@ -532,7 +454,6 @@ export function SettingsScreen() {
           contacts={contacts}
           readingsList={readingsList}
           privacyLockOn={privacyLockOn}
-          programType={programType}
           iconColors={iconColors}
           switchColors={switchColors}
           onOpenProfile={() => setShowProfileModal(true)}
@@ -541,7 +462,6 @@ export function SettingsScreen() {
           onOpenAnalytics={() => router.push('/analytics')}
           onOpenThoughts={handleOpenThoughts}
           onTogglePrivacyLock={handleTogglePrivacyLock}
-          onChangeProgramType={handleChangeProgramType}
         />
 
         <AppearanceSection
@@ -598,7 +518,7 @@ export function SettingsScreen() {
         switchColors={switchColors}
         moduleSettingsModal={moduleSettingsModal}
         moduleSettings={moduleSettings}
-        effectiveGoals={effectiveGoals}
+        effectiveGoals={{ ...effectiveGoals }}
         resetTrackingMessage={resetTrackingMessage}
         onCloseModuleSettings={() => { setModuleSettingsModal(null); setResetTrackingMessage(false); }}
         onResetModuleTrackingStartDate={handleResetModuleTrackingStartDate}
@@ -626,12 +546,12 @@ export function SettingsScreen() {
         contacts={contacts}
         canAddMore={canAddMore}
         onCloseContacts={() => setShowContactsModal(false)}
-        onAddContact={handleAddContact}
+        onAddContact={async () => { setShowContactsModal(false); await contactPicker.pickContact(); }}
         onRemoveContact={handleRemoveContact}
-        showLabelModal={showLabelModal}
-        pendingContactName={pendingContact?.name ?? ''}
-        onCloseLabelModal={() => { setShowLabelModal(false); setPendingContact(null); }}
-        onSaveWithLabel={handleSaveWithLabel}
+        showLabelModal={contactPicker.showLabelModal}
+        pendingContactName={contactPicker.pendingContactName}
+        onCloseLabelModal={() => { contactPicker.cancelLabel(); setShowContactsModal(true); }}
+        onSaveWithLabel={async (label: string) => { await contactPicker.saveWithLabel(label); setShowContactsModal(true); }}
         showReadingsModal={showReadingsModal}
         readingsList={readingsList}
         showAddReadingForm={showAddReadingForm}

@@ -16,3 +16,11 @@ export function formatStepsLeft(stepsLeft: number): string {
   if (stepsLeft <= 0) return '0';
   return `-${formatCompact(stepsLeft)}`;
 }
+
+/**
+ * Calculate a percentage score capped at a maximum value.
+ */
+export function scorePercent(value: number, goal: number, cap = 100): number {
+  if (goal <= 0 || value < 0) return 0;
+  return Math.min(cap, Math.round((value / goal) * 100));
+}

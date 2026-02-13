@@ -1,11 +1,4 @@
-/**
- * Database operations for daily check-ins.
- *
- * Follows the same SQLite-with-AsyncStorage-fallback pattern as every other
- * feature in this codebase. One row per calendar day in the daily_checkins table.
- *
- * Used by: useCheckIn hook, home screen, commitment helpers.
- */
+/** Database operations for daily check-ins (SQLite + AsyncStorage fallback). */
 
 import { getDatabase, isSQLiteAvailable } from '@/lib/database/db';
 import type {
@@ -15,7 +8,6 @@ import type {
 import * as asyncCheckin from '@/lib/database/asyncFallback/checkin';
 import { triggerSync } from '@/lib/sync';
 
-/** Convert a database row to the domain type. */
 function rowToCheckIn(row: DailyCheckInRow): DailyCheckIn {
   return {
     date: row.date,
@@ -28,7 +20,6 @@ function rowToCheckIn(row: DailyCheckInRow): DailyCheckIn {
   };
 }
 
-/** Get the check-in for a specific date, or null if none exists. */
 export async function getCheckInForDate(date: string): Promise<DailyCheckIn | null> {
   if (!(await isSQLiteAvailable())) {
     return asyncCheckin.getCheckInForDateAsync(date);
@@ -42,7 +33,6 @@ export async function getCheckInForDate(date: string): Promise<DailyCheckIn | nu
   return row ? rowToCheckIn(row) : null;
 }
 
-/** Save (insert or replace) a check-in for a given day. */
 export async function saveCheckIn(checkIn: DailyCheckIn): Promise<void> {
   if (!(await isSQLiteAvailable())) {
     await asyncCheckin.saveCheckInAsync(checkIn);
@@ -67,7 +57,6 @@ export async function saveCheckIn(checkIn: DailyCheckIn): Promise<void> {
   triggerSync();
 }
 
-/** Toggle the TODO completed status for today's check-in. */
 export async function updateTodoCompleted(date: string, completed: boolean): Promise<void> {
   if (!(await isSQLiteAvailable())) {
     await asyncCheckin.updateTodoCompletedAsync(date, completed);
@@ -82,10 +71,6 @@ export async function updateTodoCompleted(date: string, completed: boolean): Pro
   triggerSync();
 }
 
-/**
- * Get the most recent check-in (any date), or null if none exist.
- * Used on the home screen to show time since last commitment expired.
- */
 export async function getMostRecentCheckIn(): Promise<DailyCheckIn | null> {
   if (!(await isSQLiteAvailable())) {
     return asyncCheckin.getMostRecentCheckInAsync();
@@ -98,10 +83,6 @@ export async function getMostRecentCheckIn(): Promise<DailyCheckIn | null> {
   return row ? rowToCheckIn(row) : null;
 }
 
-/**
- * Delete a check-in for a specific date.
- * Used when the user wants to reset and redo their commitment.
- */
 export async function deleteCheckIn(date: string): Promise<void> {
   if (!(await isSQLiteAvailable())) {
     await asyncCheckin.deleteCheckInAsync(date);
@@ -113,10 +94,6 @@ export async function deleteCheckIn(date: string): Promise<void> {
   triggerSync();
 }
 
-/**
- * Get all check-ins, ordered newest-first.
- * Used by the analytics page for commitment history.
- */
 export async function getAllCheckIns(): Promise<DailyCheckIn[]> {
   if (!(await isSQLiteAvailable())) {
     return asyncCheckin.getAllCheckInsAsync();

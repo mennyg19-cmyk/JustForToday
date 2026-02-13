@@ -4,28 +4,32 @@ import { OnboardingStep } from '../components/OnboardingStep';
 import { User } from 'lucide-react-native';
 import { useIconColors } from '@/lib/iconTheme';
 import { getUserProfile, saveUserProfile } from '@/lib/settings/database';
+import { logger } from '@/lib/logger';
 
 interface StepProps {
   onNext: () => void;
+  onBack?: () => void;
   onSkip?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
-export function ProfileStep({ onNext, onSkip }: StepProps) {
+export function ProfileStep({ onNext, onBack, onSkip }: StepProps) {
   const iconColors = useIconColors();
   const [name, setName] = useState('');
 
   const handleNext = async () => {
-    if (name.trim()) {
-      const profile = await getUserProfile();
-      await saveUserProfile({ ...profile, name: name.trim() });
+    try {
+      if (name.trim()) {
+        const profile = await getUserProfile();
+        await saveUserProfile({ ...profile, name: name.trim() });
+      }
+    } catch (err) {
+      logger.error('Failed to save profile during onboarding:', err);
     }
     onNext();
   };
 
   return (
-    <OnboardingStep onNext={handleNext} onSkip={onSkip}>
+    <OnboardingStep onNext={handleNext} onBack={onBack} onSkip={onSkip}>
       <View className="gap-6 pt-8">
         {/* Icon */}
         <View className="items-center">
@@ -57,6 +61,7 @@ export function ProfileStep({ onNext, onSkip }: StepProps) {
             className="bg-input text-input-foreground text-lg px-6 py-4 rounded-xl border border-border"
             autoCapitalize="words"
             autoCorrect={false}
+            maxLength={50}
             returnKeyType="next"
             onSubmitEditing={handleNext}
           />

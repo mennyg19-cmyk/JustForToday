@@ -164,7 +164,7 @@ export function GroundingExercise() {
   }, []);
 
   const handleOpenReading = useCallback((reading: GroundingReading) => {
-    router.push(getReaderRoute(reading));
+    router.push(getReaderRoute(reading) as any);
   }, [router]);
 
   /** Save the current thought to AsyncStorage. */

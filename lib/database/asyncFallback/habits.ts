@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Habit } from '@/lib/database/schema';
-import { formatDateKey, getTodayKey, getWeekStart, getWeekEnd, getMonthStart, getMonthEnd } from '@/utils/date';
+import { formatDateKey, getTodayKey, getWeekStart, getWeekEnd, getMonthStart, getMonthEnd, parseDateKey } from '@/utils/date';
 
 const HABITS_KEY = 'lifetrack_habits';
 
@@ -27,8 +27,8 @@ function calculateLongestStreak(history: Record<string, boolean>): number {
   let longest = 1;
   let current = 1;
   for (let i = 1; i < dates.length; i++) {
-    const prev = new Date(dates[i - 1] + 'T00:00:00');
-    const curr = new Date(dates[i] + 'T00:00:00');
+    const prev = parseDateKey(dates[i - 1]);
+    const curr = parseDateKey(dates[i]);
     const diffDays = Math.floor((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays === 1) {
       current++;

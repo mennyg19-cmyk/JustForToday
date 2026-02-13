@@ -5,8 +5,12 @@ const FASTING_KEY = 'lifetrack_fasting_sessions';
 
 export async function getFastingSessionsAsync(): Promise<FastingSession[]> {
   const raw = await AsyncStorage.getItem(FASTING_KEY);
-  const data = raw ? JSON.parse(raw) : [];
-  return data;
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
 }
 
 export async function createFastingSessionAsync(startAt: string): Promise<FastingSession> {

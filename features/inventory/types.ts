@@ -1,6 +1,6 @@
 import type { InventoryEntry as SchemaInventoryEntry } from '@/lib/database/schema';
 
-export type InventoryType = 'morning' | 'nightly' | 'step10' | 'fear';
+export type InventoryType = 'morning' | 'nightly' | 'step10';
 
 export type InventoryEntry = SchemaInventoryEntry;
 

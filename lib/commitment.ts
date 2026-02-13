@@ -1,13 +1,4 @@
-/**
- * Shared commitment logic — single source of truth for check-in state.
- *
- * Used by: CheckInFlow (to save), home screen (to display), and potentially
- * the Daily Renewal screen (reads the same sobriety counter data).
- *
- * Why this exists: commitment resolution, expiry calculation, and
- * "has checked in today" logic must be identical everywhere. Duplicating
- * any of this would cause the home screen and check-in flow to disagree.
- */
+/** Shared commitment logic — single source of truth for check-in state. */
 
 import type { DailyCheckIn, CommitmentType } from '@/lib/database/schema';
 
@@ -18,10 +9,7 @@ export type { DailyCheckIn, CommitmentType };
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
-/**
- * How many milliseconds does this commitment type last?
- * Returns null for 'none' (no expiry concept).
- */
+/** Duration in ms for commitment type, or null for 'none'. */
 export function commitmentDurationMs(type: CommitmentType): number | null {
   switch (type) {
     case '24h':
@@ -85,9 +73,7 @@ export function buildTodoText(
   return lines.join('\n');
 }
 
-/**
- * Human-readable commitment label.
- */
+/** Human-readable commitment label. */
 export function commitmentLabel(type: CommitmentType): string {
   switch (type) {
     case '24h':

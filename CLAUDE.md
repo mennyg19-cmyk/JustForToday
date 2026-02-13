@@ -1,4 +1,4 @@
-# Just For Today
+# JustForToday (LifeTrack Pro)
 
 ## What This Is
 
@@ -12,7 +12,7 @@ A privacy-first recovery and wellness tracking iOS app built with React Native /
 - **NativeWind 4 / Tailwind CSS 3** for styling
 - **SF Pro Display** (system font) for premium iOS feel
 - **iCloud Drive** sync via `@oleg_svetlichnyi/expo-icloud-storage`
-- **HealthKit** via `react-native-health` (steps, workouts)
+- **HealthKit** via `@kingstinct/react-native-healthkit` (steps, workouts, active energy) — supports new architecture via Nitro modules
 
 ## Architecture
 
@@ -47,10 +47,6 @@ Screen → Hook (useXxx) → Database (features/xxx/database.ts) → SQLite
 - `lib/cardConfigs.tsx` — Dashboard card visual configs
 - `lib/analytics.ts` — Scoring and drilldown logic
 - `lib/iconTheme.ts` — `useIconColors()` hook for themed icon colors
-- `lib/logger.ts` — Environment-gated logging (`__DEV__` only)
-- `lib/constants.ts` — App-wide default goals
-- `hooks/usePrivacyLock.ts` — Biometric/passcode lock hook
-- `components/ErrorBoundary.tsx` — Root-level crash recovery
 - `components/cardStyles.ts` — Shared card class constants
 - `components/common/` — `LoadingView`, `ErrorView`, `EmptyState`
 
@@ -73,12 +69,8 @@ Screen → Hook (useXxx) → Database (features/xxx/database.ts) → SQLite
 - Use parameterized queries (never string interpolation in SQL)
 
 ### Constants
-- `DEFAULT_GOALS` lives in `lib/constants.ts` (re-exported from `features/settings/constants.ts`) — import it, don't duplicate
+- `DEFAULT_GOALS` lives in `features/settings/constants.ts` — import it, don't duplicate
 - `getWeekStart()` lives in `utils/date.ts` — don't recreate week-start logic
-
-### Logging
-- Use `logger.info/warn/error` from `@/lib/logger` — never use raw `console.*`
-- Logger is `__DEV__`-gated: zero console output in production
 
 ### Unused Variables
 - Prefix with underscore: `_unusedParam`
@@ -109,9 +101,8 @@ eas build --platform ios  # Production iOS build
 - **User Script Sandboxing must be OFF**: `ENABLE_USER_SCRIPT_SANDBOXING = NO` must be set in both Debug and Release configs in `ios/JustForToday.xcodeproj/project.pbxproj` — CocoaPods build fails without this. If `npx expo prebuild` resets it to YES, change it back.
 - **HealthKit entitlement must be present**: `ios/JustForToday/JustForToday.entitlements` must include `com.apple.developer.healthkit` and `com.apple.developer.healthkit.access` — without these, HealthKit permission dialogs silently fail on device. If `npx expo prebuild` strips them, re-add manually.
 
-## App Details
-- **Bundle ID:** com.gurumedia.JustForToday
-- **Name:** Just For Today
-- **iOS Features:** iCloud sync, HealthKit, Contacts (trusted contacts), Face ID / Touch ID
+## App Store Details
+- **Bundle ID:** com.mennyg19.lifetrackpro
+- **Name:** LifeTrack Pro (display: "Just For Today" in-app)
+- **iOS Features:** iCloud sync, HealthKit, Contacts (trusted contacts)
 - **Dark Mode:** System-aware via `userInterfaceStyle: "automatic"`
-- **Privacy:** No backend, no analytics services, no tracking — all data on-device

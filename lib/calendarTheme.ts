@@ -14,10 +14,3 @@ export function useCalendarTheme() {
     weekday: isDark ? '#B4AA96' : '#807869',
   };
 }
-
-// Fallback for non-hook usage (defaults to dark mode brass tones)
-export const calendarTheme = {
-  monthLabel: '#D4B26A',
-  chevron: '#D4B26A',
-  weekday: '#B4AA96',
-};

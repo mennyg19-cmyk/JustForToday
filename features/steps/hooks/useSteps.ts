@@ -13,6 +13,7 @@ import type { StepsDayRecord } from '../database';
 import { CALORIES_PER_STEP_ESTIMATE } from '../constants';
 import { getGoals } from '@/lib/settings';
 import { getTodayKey, getDateKeysForLastDays } from '@/utils/date';
+import { scorePercent } from '@/utils/format';
 import type { Workout } from '@/lib/database/schema';
 import * as HealthKit from '@/lib/healthKit';
 import { logger } from '@/lib/logger';
@@ -96,7 +97,7 @@ export function useSteps() {
       setHeatmapStepsData(
         heatmapRecords.map((r) => ({
           dateKey: r.date,
-          score: Math.min(100, Math.round((r.steps_count / stepsGoalForHeatmap) * 100)),
+          score: scorePercent(r.steps_count, stepsGoalForHeatmap),
         }))
       );
 
@@ -107,9 +108,10 @@ export function useSteps() {
         try {
           const granted = await HealthKit.requestFitnessPermissions();
           if (granted) {
-            const [hkWorkouts, energy] = await Promise.all([
+            const [hkWorkouts, energy, hkSteps] = await Promise.all([
               HealthKit.getWorkoutsForDate(new Date()),
               HealthKit.getActiveEnergyForDate(new Date()),
+              HealthKit.getStepsForDate(new Date()),
             ]);
             healthKitWorkouts = hkWorkouts.map((w) => ({
               id: w.id,
@@ -120,6 +122,10 @@ export function useSteps() {
               source: 'healthkit' as const,
             }));
             activeKcal = energy;
+            if (hkSteps !== null && hkSteps > 0) {
+              await setStepsForDate(todayKey, hkSteps, 'healthkit');
+              setStepsToday(hkSteps);
+            }
           }
         } catch {
           // Permission denied or HealthKit unavailable – keep defaults

@@ -5,7 +5,7 @@ import { ModalSurface } from '@/components/ModalSurface';
 import { ModalTitle, ModalLabel, ModalSection, ModalButtonRow, ModalButton } from '@/components/ModalContent';
 import { CalendarGrid } from '@/components/CalendarGrid';
 import { useIconColors } from '@/lib/iconTheme';
-import { formatDateKey, isToday } from '@/utils/date';
+import { formatDateKey, isToday, parseDateKey } from '@/utils/date';
 import type { Habit } from '../types';
 
 interface HabitCalendarProps {
@@ -163,7 +163,7 @@ export const HabitCalendar = memo(function HabitCalendar({
                 >
                   <Text className="text-foreground">
                     {editTrackingStart
-                      ? new Date(editTrackingStart + 'T00:00:00').toLocaleDateString('en-US', {
+                      ? parseDateKey(editTrackingStart).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -228,7 +228,7 @@ export const HabitCalendar = memo(function HabitCalendar({
             <View className="flex-row items-center justify-center gap-4 mt-4">
               <View className="flex-row items-center gap-2">
                 <View
-                  style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: '#B48C3C' }}
+                  style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: iconColors.primary }}
                 />
                 <Text className="text-muted-foreground" style={{ fontSize: 14 }}>
                   Completed
